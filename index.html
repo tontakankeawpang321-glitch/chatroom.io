@@ -3,825 +3,724 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chatroom (GAS Edition)</title>
+    <title>Chatroom Pro (GAS Edition)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Kanit', 'sans-serif'],
-                    },
-                    colors: {
-                        cute: {
-                            pink: '#FF9A9E',
-                            rose: '#FECFEF',
-                            purple: '#A18CD1',
-                            blue: '#FBC2EB',
-                            text: '#555555',
-                            dark: '#4A4A4A'
-                        }
-                    },
-                    animation: {
-                        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                        'fade-in': 'fadeIn 0.3s ease-out',
-                        'bounce-slow': 'bounce 3s infinite',
-                        'spin-slow': 'spin 8s linear infinite',
-                    },
-                    keyframes: {
-                        slideUp: {
-                            '0%': { transform: 'translateY(100%)' },
-                            '100%': { transform: 'translateY(0)' },
-                        },
-                        fadeIn: {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <style>
         body {
-            background: linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%);
-            color: #4a4a4a;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
+            font-family: 'Kanit', sans-serif;
+            background: linear-gradient(135deg, #f3e8ff 0%, #dbeafe 100%);
+            height: 100vh;
+            overflow: hidden;
         }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .hide-scroll::-webkit-scrollbar { display: none; }
-        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .glass-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            box-shadow: 0 10px 40px 0 rgba(31, 38, 135, 0.1);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
-        .cute-gradient-text {
-            background: -webkit-linear-gradient(45deg, #FF9A9E, #A18CD1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-        .cursor-grab { cursor: grab; }
-        .cursor-grabbing { cursor: grabbing; }
-        .disk-spin { animation: spin 10s linear infinite; }
+        .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+        .disk-spin { animation: spin 8s linear infinite; }
         .paused { animation-play-state: paused; }
         
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 12px;
-            width: 12px;
-            border-radius: 50%;
-            background: #ff9a9e;
-            cursor: pointer;
-            margin-top: -4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: #e2e8f0;
-            border-radius: 2px;
+        input[type="range"] {
+            accent-color: #ec4899;
         }
     </style>
 </head>
-<body class="h-screen w-full flex flex-col overflow-hidden">
+<body class="flex flex-col items-center justify-center">
 
-    <!-- Audio Element -->
-    <audio id="audioPlayer" preload="auto"></audio>
+    <!-- การแจ้งเตือน Toast -->
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-6 py-2 rounded-full shadow-lg z-[100] transition-all opacity-0 pointer-events-none transform -translate-y-2 text-sm"></div>
 
-    <!-- Hidden Input for Music Import -->
-    <input type="file" id="musicUploadInput" multiple accept=".mp3, .wav, audio/*" class="hidden" onchange="handleMusicUpload(event)">
+    <!-- หน้าจอ Loading -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-[200] flex items-center justify-center">
+        <div class="bg-white p-4 rounded-2xl shadow-xl flex items-center gap-3">
+            <div class="w-5 h-5 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-sm font-bold text-gray-700">กำลังประมวลผล...</span>
+        </div>
+    </div>
 
     <!-- ==================== LOBBY SCREEN ==================== -->
-    <div id="lobbyScreen" class="flex-grow flex flex-col p-6 animate-fade-in max-w-md mx-auto w-full justify-center">
-        <div class="text-center mb-10">
-            <div class="w-28 h-28 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl animate-bounce-slow border-4 border-white p-2">
-                <img src="https://api.dicebear.com/9.x/big-smile/svg?seed=Cookie" alt="Cute Icon" class="w-full h-full object-cover rounded-full">
+    <div id="lobbyView" class="w-full max-w-md p-6 flex flex-col h-full animate-slide-up">
+        <div class="text-center mb-10 mt-10">
+            <div id="avatarContainer" class="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl border-4 border-white overflow-hidden">
+                <img id="userAvatar" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Chat" alt="Avatar" class="w-20 h-20">
             </div>
-            <h1 class="text-4xl font-bold tracking-tight cute-gradient-text drop-shadow-sm">Chatroom</h1>
-            <p class="text-white font-medium text-sm mt-2 opacity-90">เชื่อมต่อ Server GAS</p>
+            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">Chatroom</h1>
+            <p class="text-gray-600 text-sm mt-1">GAS Server Connected</p>
         </div>
 
-        <div class="glass-card rounded-3xl p-6 space-y-5 shadow-xl">
+        <div class="bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/50 space-y-4">
             <div class="space-y-1">
-                <label class="text-xs text-gray-500 ml-1 uppercase font-bold tracking-wider">ชื่อของคุณ</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
-                    <input type="text" id="loginUsername" placeholder="ตั้งชื่อเล่น..." 
-                        class="w-full bg-white text-gray-700 pl-10 pr-4 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 border border-gray-100 transition-all text-sm placeholder-gray-400 shadow-inner">
-                </div>
+                <label class="text-xs font-bold text-gray-400 uppercase ml-1">ชื่อเล่นของคุณ</label>
+                <input type="text" id="usernameInput" placeholder="ตั้งชื่อเล่น..." 
+                    class="w-full bg-white border border-gray-100 rounded-2xl py-3 px-4 outline-none focus:ring-2 focus:ring-pink-200 transition-all shadow-inner">
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="openCreateRoomModal()" class="bg-gradient-to-r from-pink-400 to-rose-400 hover:from-pink-500 hover:to-rose-500 text-white py-4 rounded-2xl font-bold text-sm shadow-md flex flex-col items-center gap-1 transition-all active:scale-95 transform hover:-translate-y-1">
-                    <span class="text-2xl bg-white/20 w-8 h-8 rounded-full flex items-center justify-center mb-1">+</span>
-                    สร้างห้อง
+                <button onclick="openModal('createRoomModal')" class="bg-gradient-to-br from-pink-400 to-rose-400 text-white p-4 rounded-2xl font-bold flex flex-col items-center gap-1 shadow-lg active:scale-95 transition-transform">
+                    <span class="text-xl">➕</span>
+                    <span>สร้างห้อง</span>
                 </button>
-                <button onclick="document.getElementById('quickJoinRoomName').focus()" class="bg-white hover:bg-gray-50 text-gray-700 py-4 rounded-2xl font-bold text-sm shadow-md border border-gray-100 flex flex-col items-center gap-1 transition-all active:scale-95 transform hover:-translate-y-1">
-                    <span class="text-2xl bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center mb-1 text-gray-500">➜</span>
-                    เข้าห้อง
-                </button>
-            </div>
-
-            <div class="relative pt-2">
-                <input type="text" id="quickJoinRoomName" placeholder="ใส่ชื่อห้องเพื่อเข้าร่วม..." 
-                    class="w-full bg-transparent border-b-2 border-gray-200 text-gray-600 px-2 py-3 outline-none focus:border-pink-400 transition-all text-center text-sm font-medium placeholder-gray-400">
-                <button onclick="quickJoin()" class="absolute right-0 top-5 text-pink-400 hover:text-pink-600 font-bold text-xs bg-pink-50 px-2 py-1 rounded-lg">
-                    เข้าร่วม
+                <button onclick="fetchRooms(true)" class="bg-white text-gray-600 p-4 rounded-2xl font-bold flex flex-col items-center gap-1 border border-gray-100 shadow-md active:scale-95 transition-transform">
+                    <span class="text-xl text-blue-400">🔄</span>
+                    <span>รีเฟรช</span>
                 </button>
             </div>
         </div>
 
-        <div class="mt-6 flex-grow overflow-hidden flex flex-col">
-            <div class="flex justify-between items-center mb-3 px-2">
-                <span class="text-xs text-white font-bold uppercase drop-shadow-md">ห้องทั้งหมด (Server)</span>
-                <button onclick="fetchRooms()" class="text-xs text-white bg-white/20 px-2 py-1 rounded-full hover:bg-white/40 transition-all">รีเฟรช ↺</button>
-            </div>
-            <div id="roomListContainer" class="flex-grow overflow-y-auto space-y-2 pr-1 hide-scroll pb-4">
-                <div class="text-center text-white/50 text-xs mt-4">กำลังโหลดข้อมูลห้อง...</div>
+        <div class="mt-8 flex-grow overflow-hidden flex flex-col">
+            <h3 class="text-xs font-bold text-gray-500 uppercase px-2 mb-3 flex justify-between items-center">
+                <span>ห้องที่กำลังเปิดอยู่</span>
+                <span id="connectionStatus" class="text-[10px] text-gray-400 font-normal">รอการเชื่อมต่อ...</span>
+            </h3>
+            <div id="roomsList" class="flex-grow overflow-y-auto space-y-3 pr-1 custom-scroll">
+                <div class="text-center py-10 text-gray-400 text-sm italic">กำลังโหลดรายการห้อง...</div>
             </div>
         </div>
     </div>
 
     <!-- ==================== CHAT SCREEN ==================== -->
-    <div id="chatApp" class="hidden h-full flex-col relative bg-white w-full max-w-lg mx-auto shadow-2xl">
-        <!-- Navbar -->
-        <div class="h-16 flex items-center justify-between px-4 bg-white/80 backdrop-blur-md border-b border-gray-100 z-20 shadow-sm sticky top-0">
+    <div id="chatView" class="hidden w-full max-w-lg bg-slate-50 h-full flex flex-col shadow-2xl relative">
+        <!-- Header -->
+        <div class="h-16 flex items-center justify-between px-4 bg-white border-b border-gray-100 z-30 shadow-sm">
             <div class="flex items-center gap-3">
-                <button onclick="leaveRoom()" class="text-gray-500 hover:text-pink-500 p-2 bg-gray-100 rounded-full transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+                <button onclick="leaveRoom()" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <button onclick="showRoomInfo()" class="leading-tight text-left hover:bg-gray-50 rounded-lg p-1 transition-colors group">
-                    <div class="flex items-center gap-2">
-                        <div id="displayRoomName" class="font-bold text-gray-800 text-base truncate max-w-[150px]">Room Name</div>
-                        <span id="roomLockIcon" class="hidden text-[10px] bg-orange-100 text-orange-500 px-1.5 rounded-md">🔒</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-300 group-hover:text-blue-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                <div>
+                    <div class="font-bold text-gray-800 flex items-center gap-2">
+                        <span id="currentRoomName" class="truncate max-w-[120px]">Room</span>
+                        <span id="lockIcon" class="hidden text-orange-400 text-xs">🔒</span>
                     </div>
-                    <div class="text-[11px] text-gray-400 flex items-center gap-1 font-medium">
-                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                        <span id="displayUsername">User</span>
+                    <div class="text-[10px] text-gray-400 flex items-center gap-1 font-medium">
+                        👑 <span id="currentAdminName">Admin</span>
                     </div>
-                </button>
+                </div>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="openMediaPlayer()" class="text-pink-500 p-2 bg-pink-50 hover:bg-pink-100 rounded-full transition-colors border border-pink-100 shadow-sm animate-pulse-fast">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                <!-- ปุ่มลบข้อความทั้งหมดถูกเอาออกตามคำขอ -->
+                <button id="musicToggleBtn" onclick="togglePlayerModal()" class="p-2 rounded-full border transition-all bg-gray-50 border-gray-100 text-gray-400">
+                    🎵
                 </button>
-                <button onclick="toggleUserList()" class="text-blue-500 p-2 bg-blue-50 hover:bg-blue-100 rounded-full transition-colors border border-blue-100 shadow-sm relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                    <span id="onlineCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border-2 border-white font-bold">0</span>
+                <button onclick="toggleUserListModal()" class="p-2 bg-blue-50 border border-blue-100 rounded-full text-blue-500 relative">
+                    👥 <span id="onlineCountBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border border-white">0</span>
                 </button>
             </div>
         </div>
 
-        <div id="chatMessages" class="flex-grow overflow-y-auto p-4 space-y-4 scroll-smooth pb-32 bg-slate-50"></div>
+        <!-- รายการข้อความ -->
+        <div id="messagesList" class="flex-grow overflow-y-auto p-4 space-y-4 custom-scroll pb-24"></div>
 
-        <!-- Mini Player (Only for MP3) -->
-        <div id="miniPlayer" class="hidden absolute bottom-[80px] left-3 right-3 bg-white/95 backdrop-blur-md rounded-2xl p-2 flex items-center justify-between shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-20 border border-pink-100 ring-1 ring-pink-50 cursor-pointer" onclick="openMediaPlayer()">
+        <!-- เครื่องเล่นจิ๋ว -->
+        <div id="miniPlayer" class="hidden absolute bottom-20 left-4 right-4 bg-white/90 backdrop-blur-md rounded-2xl p-2 flex items-center justify-between border border-pink-100 shadow-lg z-20">
             <div class="flex items-center gap-3 overflow-hidden">
-                <div class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center text-xs text-white flex-shrink-0 shadow-inner overflow-hidden border-2 border-gray-700 relative" id="miniArtContainer">
-                    <div class="absolute inset-0 border-2 border-gray-600 rounded-full opacity-50"></div>
-                    <div class="w-3 h-3 bg-white rounded-full z-10"></div>
-                </div>
-                <div class="flex-grow min-w-0">
-                    <div id="miniTitle" class="text-xs font-bold text-gray-800 truncate">Song Title</div>
-                    <div id="miniArtist" class="text-[10px] text-pink-500 truncate font-medium">Artist</div>
+                <div id="miniDisc" class="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-xs flex-shrink-0">💿</div>
+                <div class="overflow-hidden text-left">
+                    <div id="miniSongTitle" class="text-[10px] font-bold text-gray-800 truncate">Song Name</div>
+                    <div id="miniSongArtist" class="text-[9px] text-pink-500">Local File</div>
                 </div>
             </div>
-            <div class="flex items-center gap-1 pr-2">
-                <button onclick="event.stopPropagation(); togglePlayState()" class="w-8 h-8 flex items-center justify-center bg-pink-100 text-pink-500 rounded-full hover:bg-pink-200 transition-colors">
-                    <span id="miniPlayIcon">▶</span>
+            <div class="flex items-center gap-1">
+                <button onclick="stopMusicPlayback()" class="w-8 h-8 text-[10px] bg-gray-100 text-gray-500 rounded-full flex items-center justify-center">■</button>
+                <button onclick="toggleMusicPlayback()" class="w-8 h-8 bg-pink-100 text-pink-500 rounded-full flex items-center justify-center font-bold">⏸</button>
+            </div>
+        </div>
+
+        <!-- ช่องพิมพ์ข้อความ -->
+        <div class="absolute bottom-0 w-full bg-white border-t p-3 z-40">
+            <div class="flex items-center gap-2 bg-gray-100 p-1.5 rounded-full border border-gray-200 shadow-inner">
+                <label class="p-2 text-gray-400 hover:text-blue-500 cursor-pointer">
+                    📎 <input type="file" id="imageInput" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
+                </label>
+                <input id="messageInput" class="bg-transparent flex-grow outline-none text-sm px-2 text-gray-700" placeholder="พิมพ์ข้อความ..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <button onclick="sendMessage()" class="bg-gradient-to-r from-pink-500 to-rose-400 text-white p-2.5 rounded-full shadow-md active:scale-90 transition-transform">
+                    🚀
                 </button>
             </div>
         </div>
-
-        <!-- Input -->
-        <div class="absolute bottom-0 w-full bg-white border-t border-gray-100 p-3 z-30 pb-safe">
-            <div id="emojiPanel" class="hidden mb-2 bg-white rounded-2xl shadow-lg border border-pink-100 p-3 grid grid-cols-8 gap-2 overflow-y-auto max-h-40 animate-slide-up">
-                <button onclick="addEmoji('😀')" class="hover:bg-pink-50 p-1 rounded text-xl">😀</button>
-                <button onclick="addEmoji('😂')" class="hover:bg-pink-50 p-1 rounded text-xl">😂</button>
-                <button onclick="addEmoji('🥰')" class="hover:bg-pink-50 p-1 rounded text-xl">🥰</button>
-                <button onclick="addEmoji('🥺')" class="hover:bg-pink-50 p-1 rounded text-xl">🥺</button>
-                <button onclick="addEmoji('😎')" class="hover:bg-pink-50 p-1 rounded text-xl">😎</button>
-                <button onclick="addEmoji('😭')" class="hover:bg-pink-50 p-1 rounded text-xl">😭</button>
-                <button onclick="addEmoji('😡')" class="hover:bg-pink-50 p-1 rounded text-xl">😡</button>
-                <button onclick="addEmoji('👍')" class="hover:bg-pink-50 p-1 rounded text-xl">👍</button>
-                <button onclick="addEmoji('❤️')" class="hover:bg-pink-50 p-1 rounded text-xl">❤️</button>
-                <button onclick="addEmoji('🎉')" class="hover:bg-pink-50 p-1 rounded text-xl">🎉</button>
-            </div>
-            <div id="previewContainer" class="hidden flex gap-2 mb-2 px-1">
-                <div id="filePreviewBadge" class="hidden bg-blue-50 text-blue-600 text-xs px-3 py-1.5 rounded-full flex items-center gap-2 border border-blue-100 font-medium">
-                    <span class="text-lg">📎</span> <span id="fileName" class="truncate max-w-[150px]">File</span> 
-                    <button onclick="clearFile()" class="ml-2 text-blue-300 hover:text-blue-600 bg-white rounded-full w-4 h-4 flex items-center justify-center">✕</button>
-                </div>
-            </div>
-            <div class="flex items-end gap-2 bg-gray-50 p-1.5 rounded-3xl border border-gray-200 focus-within:border-pink-300 focus-within:ring-2 focus-within:ring-pink-100 transition-all shadow-sm">
-                <button onclick="document.getElementById('fileInput').click()" class="p-2.5 text-gray-400 hover:text-blue-500 transition-colors bg-white rounded-full shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg></button>
-                <div class="flex-grow flex items-center py-2.5 px-2 relative">
-                    <input type="text" id="messageInput" placeholder="พิมพ์ข้อความ..." class="bg-transparent w-full text-sm outline-none text-gray-700 placeholder-gray-400 max-h-24 font-medium pr-8" autocomplete="off">
-                    <button onclick="toggleEmoji()" class="absolute right-0 text-gray-400 hover:text-yellow-500 transition-colors p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>
-                </div>
-                <button onclick="sendMessage()" class="p-2.5 text-white bg-gradient-to-r from-pink-400 to-rose-500 rounded-full shadow-md hover:shadow-lg transition-all transform active:scale-90" id="sendButton"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg></button>
-            </div>
-            <input type="file" id="fileInput" class="hidden" onchange="handleFileSelect(event)">
-            <input type="file" id="profileInput" class="hidden" onchange="handleProfileSelect(event)">
-        </div>
     </div>
 
-    <!-- ==================== MEDIA PLAYER MODAL ==================== -->
-    <div id="mediaPlayerModal" class="hidden fixed inset-0 z-50 bg-white/95 backdrop-blur-xl flex flex-col animate-slide-up">
-        <div class="flex items-center justify-between px-6 py-5 bg-white/50">
-            <button onclick="closeMediaPlayer()" class="text-gray-400 hover:text-gray-800 transition-colors p-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button>
-            <div class="text-xs uppercase tracking-widest text-pink-500 font-bold bg-pink-50 px-3 py-1 rounded-full">Music Player</div>
-            <button onclick="document.getElementById('musicUploadInput').click()" class="text-blue-500 hover:text-blue-700 font-bold text-xs flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-full"><span>+</span> เพิ่มเพลง</button>
-        </div>
-        <div class="flex-grow flex flex-col px-6 pt-2 pb-8 overflow-y-auto">
-            <div id="sectionMP3" class="flex-grow flex flex-col">
-                <div class="flex border-b border-gray-100 mb-4">
-                    <button onclick="showLibrary()" id="tabLibrary" class="flex-1 pb-2 text-sm font-bold text-pink-500 border-b-2 border-pink-500 transition-colors">รายการเพลง</button>
-                    <button onclick="showNowPlaying()" id="tabNowPlaying" class="flex-1 pb-2 text-sm font-bold text-gray-400 border-b-2 border-transparent transition-colors">กำลังเล่น</button>
-                </div>
-                <div id="libraryView" class="block space-y-3 pb-safe"></div>
-                <div id="nowPlayingView" class="hidden flex-col h-full items-center pt-4">
-                    <div id="playerDisc" class="w-64 h-64 rounded-full bg-gray-900 shadow-2xl border-4 border-gray-800 flex items-center justify-center relative mb-8 transition-transform duration-300">
-                        <div class="absolute inset-0 rounded-full border-[12px] border-gray-800 opacity-20 pointer-events-none"></div>
-                        <div class="absolute inset-8 rounded-full border-2 border-gray-700 opacity-30 pointer-events-none"></div>
-                        <div class="absolute inset-16 rounded-full border-2 border-gray-700 opacity-30 pointer-events-none"></div>
-                        <div class="w-24 h-24 bg-gradient-to-tr from-pink-400 to-rose-500 rounded-full flex items-center justify-center relative z-10 shadow-inner overflow-hidden"><span class="text-white text-xs font-bold opacity-80">MUSIC</span></div>
-                        <div class="absolute w-3 h-3 bg-white rounded-full z-20"></div>
-                    </div>
-                    <div class="text-center mb-8 w-full">
-                        <h2 id="playerSongTitle" class="text-2xl font-bold text-gray-800 truncate px-4">เลือกเพลงเพื่อเริ่มเล่น</h2>
-                        <p id="playerArtist" class="text-pink-400 text-sm font-medium mt-1">Chatroom Music</p>
-                    </div>
-                    <div class="w-full max-w-xs mt-auto">
-                        <div class="flex items-center gap-3 text-xs text-gray-400 font-mono mb-2"><span id="currTime">0:00</span><input type="range" id="progressBar" value="0" min="0" max="100" class="flex-grow h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"><span id="durTime">0:00</span></div>
-                        <div class="flex items-center justify-center gap-8 mt-6">
-                            <button onclick="prevTrack()" class="text-gray-300 hover:text-gray-600 transition-colors p-2"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-                            <button onclick="togglePlayState()" id="mainPlayBtn" class="w-20 h-20 bg-gradient-to-tr from-pink-400 to-rose-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-pink-200 transform hover:scale-105 active:scale-95 transition-all"><svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
-                            <button onclick="nextTrack()" class="text-gray-300 hover:text-gray-600 transition-colors p-2"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
-                        </div>
-                    </div>
-                </div>
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- รหัสผ่านห้อง -->
+    <div id="passwordPromptModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-6 animate-slide-up text-center">
+            <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto text-2xl">🔒</div>
+            <h2 class="text-xl font-bold text-gray-800">กรุณาใส่รหัสผ่าน</h2>
+            <input id="joinRoomPasswordInput" type="password" class="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 outline-none text-center text-lg tracking-widest font-bold focus:ring-2 focus:ring-orange-200" placeholder="••••••">
+            <div class="flex gap-2">
+                <button onclick="closeModal('passwordPromptModal')" class="flex-1 py-3 text-gray-400 font-bold">ยกเลิก</button>
+                <button id="confirmJoinBtn" class="flex-1 py-3 bg-orange-400 text-white rounded-xl font-bold shadow-lg">เข้าร่วม</button>
             </div>
         </div>
     </div>
 
-    <div id="imageViewerModal" class="hidden fixed inset-0 z-[100] bg-black flex flex-col justify-center items-center overflow-hidden transition-opacity duration-300 opacity-0 touch-none">
-        <button onclick="closeImageViewer()" class="absolute top-4 right-4 text-white/70 hover:text-white text-4xl font-bold z-50 p-2 drop-shadow-md">&times;</button>
-        <div class="relative w-full h-full flex items-center justify-center overflow-hidden" id="zoomContainer">
-            <img id="viewerImage" src="" alt="Full Screen" class="max-w-full max-h-full object-contain select-none cursor-grab active:cursor-grabbing transform transition-transform duration-75 ease-linear will-change-transform">
-        </div>
-        <div class="absolute bottom-6 text-white/50 text-sm pointer-events-none bg-black/20 px-3 py-1 rounded-full backdrop-blur-sm">ใช้นิ้วขยาย/ย่อ หรือเลื่อนรูป</div>
-    </div>
-
-    <!-- Modals -->
-    <div id="userListModal" class="hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onclick="if(event.target===this) toggleUserList()">
-        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-white ring-1 ring-gray-100 scale-100">
-            <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold text-gray-800">คนในห้อง</h3><button onclick="toggleUserList()" class="text-gray-400 hover:text-pink-500 text-lg font-bold">✕</button></div>
-            <div id="userListContent" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
-        </div>
-    </div>
-
-    <div id="roomInfoModal" class="hidden fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onclick="if(event.target===this) closeModal('roomInfoModal')">
-        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-white ring-1 ring-gray-100">
-            <div class="flex justify-between items-start mb-4"><div><h3 class="text-xl font-bold text-gray-800" id="infoModalRoomName">Room Name</h3><span class="text-xs px-2 py-0.5 rounded-md font-medium" id="infoModalType">Public</span></div><button onclick="closeModal('roomInfoModal')" class="text-gray-400 hover:text-red-500 text-lg">✕</button></div>
-            <div class="space-y-3"><div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-400 mb-1">รหัสห้อง (Password)</div><div class="flex items-center justify-between"><span id="infoModalPassword" class="font-mono text-gray-800 font-bold text-lg tracking-wider">---</span><button onclick="copyPassword()" class="text-blue-500 text-xs font-bold hover:underline bg-blue-50 px-2 py-1 rounded">คัดลอก</button></div><div id="noPasswordText" class="text-sm text-gray-400 italic hidden">ห้องนี้ไม่มีรหัสผ่าน</div></div></div>
-        </div>
-    </div>
-
-    <div id="createRoomModal" class="hidden fixed inset-0 bg-white/60 z-[60] flex items-center justify-center p-6 backdrop-blur-sm transition-all">
-        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl border border-white ring-1 ring-gray-100 scale-100 animate-slide-up">
-            <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">สร้างห้องใหม่</h3>
-            <div class="space-y-4">
-                <input type="text" id="newRoomName" placeholder="ชื่อห้อง..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-700 outline-none focus:border-pink-400 font-medium">
-                <div class="grid grid-cols-2 gap-3">
-                    <label class="cursor-pointer bg-white border-2 border-pink-400 rounded-xl p-3 flex flex-col items-center gap-1 shadow-sm transition-all" id="typePublicLabel"><input type="radio" name="roomType" value="public" class="hidden" checked onchange="toggleRoomType(this.value)"><span class="text-2xl">🌐</span><span class="text-xs font-bold text-pink-500">สาธารณะ</span></label>
-                    <label class="cursor-pointer bg-gray-50 border-2 border-transparent rounded-xl p-3 flex flex-col items-center gap-1 hover:bg-gray-100 transition-all opacity-60 grayscale" id="typePrivateLabel"><input type="radio" name="roomType" value="private" class="hidden" onchange="toggleRoomType(this.value)"><span class="text-2xl">🔒</span><span class="text-xs font-bold text-gray-500">ส่วนตัว</span></label>
-                </div>
-                <input type="password" id="newRoomPassword" placeholder="ตั้งรหัสผ่าน (จำเป็น)" class="hidden w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-700 outline-none focus:border-orange-400 font-medium">
+    <!-- สร้างห้องใหม่ -->
+    <div id="createRoomModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-4">
+            <h2 class="text-xl font-bold text-center text-gray-800">สร้างห้องใหม่</h2>
+            <input id="newRoomName" class="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 outline-none" placeholder="ชื่อห้อง...">
+            <div class="flex gap-2">
+                <button onclick="setNewRoomType('public')" id="typePublicBtn" class="flex-1 p-2 rounded-xl text-xs font-bold bg-pink-100 text-pink-500 border-2 border-pink-400">สาธารณะ</button>
+                <button onclick="setNewRoomType('private')" id="typePrivateBtn" class="flex-1 p-2 rounded-xl text-xs font-bold bg-gray-50 text-gray-400">ส่วนตัว</button>
             </div>
-            <div class="flex gap-3 mt-8"><button onclick="closeModal('createRoomModal')" class="flex-1 py-3.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-100">ยกเลิก</button><button onclick="confirmCreateRoom()" class="flex-1 py-3.5 bg-gradient-to-r from-pink-400 to-rose-500 text-white rounded-xl text-sm font-bold shadow-lg">สร้างเลย</button></div>
+            <input id="newRoomPass" class="hidden w-full bg-gray-50 border border-gray-100 rounded-xl p-3 outline-none" placeholder="รหัสผ่าน..." type="password">
+            <div class="flex gap-2 pt-4">
+                <button onclick="closeModal('createRoomModal')" class="flex-1 py-3 text-gray-400 font-bold">ยกเลิก</button>
+                <button onclick="createRoom()" class="flex-1 py-3 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-xl font-bold shadow-lg shadow-pink-100">สร้าง</button>
+            </div>
         </div>
     </div>
 
-    <div id="passwordPromptModal" class="hidden fixed inset-0 bg-white/60 z-[60] flex items-center justify-center p-6 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl border border-white ring-1 ring-gray-100 animate-slide-up">
-            <div class="text-center mb-6"><h3 class="text-xl font-bold text-gray-800">ใส่รหัสผ่าน</h3><p class="text-sm text-gray-400 mt-1" id="promptRoomName"></p></div>
-            <input type="password" id="promptPassword" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-center text-lg text-gray-800 outline-none focus:border-orange-400 mb-6 tracking-widest font-bold">
-            <div class="flex gap-3"><button onclick="closeModal('passwordPromptModal')" class="flex-1 py-3 text-gray-400 text-sm font-bold">ยกเลิก</button><button onclick="submitPassword()" class="flex-1 py-3 bg-orange-400 text-white rounded-xl text-sm font-bold shadow-md">ยืนยัน</button></div>
+    <!-- เครื่องเล่นเพลง -->
+    <div id="musicModal" class="hidden fixed inset-0 bg-white/95 backdrop-blur-xl z-50 flex flex-col">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+            <button onclick="closeModal('musicModal')" class="text-gray-400 p-1 text-2xl">✕</button>
+            <span class="text-xs font-bold text-pink-500 uppercase tracking-widest bg-pink-50 px-4 py-1.5 rounded-full">
+                Music Player <span id="adminBadge" class="hidden bg-yellow-400 text-white px-1.5 rounded-full text-[8px]">👑</span>
+            </span>
+            <div class="w-6"></div>
+        </div>
+        <div class="flex-grow p-6 flex flex-col items-center justify-center space-y-6 overflow-y-auto custom-scroll">
+            <div id="playerDisc" class="w-40 h-40 rounded-full bg-gray-900 border-8 border-gray-800 shadow-2xl flex items-center justify-center relative flex-shrink-0">
+                <div class="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white font-black text-[10px]">DISK</div>
+                <div class="absolute w-2 h-2 bg-white rounded-full"></div>
+            </div>
+            
+            <div class="text-center w-full max-w-[250px]">
+                <h2 id="playerSongTitle" class="text-lg font-bold text-gray-800 truncate">กรุณาเพิ่มไฟล์เพลง</h2>
+                <p id="playerSongArtist" class="text-pink-400 text-xs">เลือกไฟล์ .mp3 จากเครื่องคุณ</p>
+            </div>
+
+            <!-- Audio Progress Bar -->
+            <div class="w-full max-w-[300px] space-y-1">
+                <input type="range" id="audioProgress" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer" value="0" step="0.1" onchange="handleSeek(this.value)">
+                <div class="flex justify-between text-[10px] text-gray-400 font-mono">
+                    <span id="currentTime">0:00</span>
+                    <span id="durationTime">0:00</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button onclick="changeTrack(-1)" class="text-gray-400 hover:text-pink-500 text-2xl transition-colors">⏮</button>
+                <button onclick="stopMusicPlayback()" class="w-12 h-12 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center text-xl shadow hover:bg-gray-200 transition-all">■</button>
+                <button id="playerPlayBtn" onclick="toggleMusicPlayback()" class="w-16 h-16 bg-gradient-to-tr from-pink-500 to-rose-400 rounded-full flex items-center justify-center text-white text-2xl shadow-xl active:scale-90 transition-all">▶</button>
+                <button onclick="changeTrack(1)" class="text-gray-400 hover:text-pink-500 text-2xl transition-colors">⏭</button>
+            </div>
+
+            <div class="w-full flex justify-center gap-2">
+                <label class="bg-blue-500 text-white px-5 py-2 rounded-full font-bold cursor-pointer hover:bg-blue-600 transition-colors shadow-md text-xs">
+                    📁 เพิ่มไฟล์เพลง
+                    <input type="file" id="musicFileInput" class="hidden" accept="audio/*" multiple onchange="handleMusicUpload(event)">
+                </label>
+            </div>
+
+            <div id="playlistContainer" class="w-full space-y-2 max-h-40 overflow-y-auto custom-scroll px-2"></div>
         </div>
     </div>
 
-    <div id="statusToast" class="fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full text-sm font-bold shadow-lg z-[100] text-white bg-gray-800 transition-all duration-300 opacity-0 -translate-y-10 pointer-events-none"></div>
+    <!-- รายชื่อผู้ใช้ -->
+    <div id="userModal" class="hidden fixed inset-0 bg-black/50 z-50 flex justify-center items-end p-4">
+        <div class="bg-white w-full rounded-3xl p-6 shadow-2xl space-y-4 max-h-[60%] overflow-y-auto">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-gray-800">ผู้อยู่ในห้อง</h3>
+                <button onclick="closeModal('userModal')" class="text-gray-400">✕</button>
+            </div>
+            <div id="onlineUsersList" class="space-y-2"></div>
+        </div>
+    </div>
 
+    <!-- Scripts -->
     <script>
-        // API Configuration
         const API_URL = 'https://script.google.com/macros/s/AKfycbyN2O8J4B4pGFt31h955kLF9U_m7hyCLqRTDpsanJzUZw8DyUR4mOwJaN7T0t7CgGYK/exec';
 
+        // State Management
+        let currentUsername = localStorage.getItem('chat_username') || '';
+        let currentRoom = null;
+        let roomRegistry = {};
+        let messages = [];
+        let pollingIntervals = [];
+        let isRoomAdmin = false;
+        let musicState = { playingIndex: 0, isPlaying: false, seek: 0 };
+        let userPlaylist = [];
+        const audio = new Audio();
+        
+        // Sync Control
+        let lastCommandTimestamp = 0;
+        let isUserSeeking = false;
+
+        // --- API Helper ---
         async function api(action, payload = {}) {
             try {
-                // Using text/plain to avoid CORS preflight (OPTIONS)
-                const res = await fetch(API_URL, {
+                const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action, key: 'chat-v1', ...payload }) // Added key here
+                    body: JSON.stringify({ action, key: 'chat-v1', ...payload })
                 });
-                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                return await res.json();
-            } catch (e) {
-                console.warn("Server connection failed, switching to Local Mode:", e);
-                showToast('เข้าสู่โหมดออฟไลน์ (Local Mode)');
-                return await mockServer(action, payload);
+                return await response.json();
+            } catch (error) {
+                console.error("API Error:", error);
+                return { ok: false, error: 'Connection Error' };
             }
         }
-        
-        // Mock Server for offline/fallback
-        async function mockServer(action, p) {
-            await new Promise(r => setTimeout(r, 300));
-            if (action === 'getRooms') {
-                return JSON.parse(localStorage.getItem('mock_rooms') || '{"Lobby":{"type":"public","createdAt":0}}');
-            }
-            if (action === 'createRoom') {
-                const rooms = JSON.parse(localStorage.getItem('mock_rooms') || '{}');
-                if (rooms[p.name]) return { ok: false };
-                rooms[p.name] = { type: p.type, password: p.password, createdAt: Date.now() };
-                localStorage.setItem('mock_rooms', JSON.stringify(rooms));
-                return { ok: true };
-            }
-            if (action === 'getMessages') {
-                return JSON.parse(localStorage.getItem(`mock_msg_${p.room}`) || '[]');
-            }
-            if (action === 'addMessage') {
-                const msgs = JSON.parse(localStorage.getItem(`mock_msg_${p.room}`) || '[]');
-                msgs.push({
-                    id: Date.now(), user: p.user, text: p.text, file: p.file, fileName: p.fileName, fileType: p.fileType,
-                    timestamp: new Date().toISOString(), isSystem: false
-                });
-                if(msgs.length > 50) msgs.shift();
-                localStorage.setItem(`mock_msg_${p.room}`, JSON.stringify(msgs));
-                return { ok: true };
-            }
-            if (action === 'presence') {
-                const key = `mock_presence_${p.room}`;
-                let pres = JSON.parse(localStorage.getItem(key) || '{}');
-                pres[p.user] = Date.now();
-                const now = Date.now();
-                let active = [];
-                let newPres = {};
-                for(let u in pres) {
-                    if (now - pres[u] < 30000) { newPres[u] = pres[u]; active.push({ name: u }); }
-                }
-                localStorage.setItem(key, JSON.stringify(newPres));
-                return active;
-            }
-            return {};
+
+        function toggleLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) overlay.classList.remove('hidden');
+            else overlay.classList.add('hidden');
         }
 
-        // Core State
-        let currentUser = '', currentRoom = null, messages = [], roomRegistry = {}, pendingJoinRoomName = '';
-        let roomParticipants = []; 
-        let pollingInterval = null, presenceInterval = null;
+        // --- Utility ---
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "0:00";
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
 
-        // Music Player State
-        let playlist = []; // Empty initially
-        let currentTrackIndex = 0;
-        let isPlaying = false;
-        const audio = document.getElementById('audioPlayer');
+        function updateConnectionStatus(isError) {
+            const el = document.getElementById('connectionStatus');
+            if(isError) {
+                el.textContent = 'เชื่อมต่อไม่ได้';
+                el.className = 'text-[10px] text-red-500 font-bold';
+            } else {
+                el.textContent = 'ออนไลน์';
+                el.className = 'text-[10px] text-green-500 font-bold';
+            }
+        }
 
-        // Init
-        document.addEventListener('DOMContentLoaded', () => {
-            if(localStorage.getItem('last_username')) document.getElementById('loginUsername').value = localStorage.getItem('last_username');
-            fetchRooms(); 
-            renderPlaylist(); 
-            document.getElementById('messageInput').addEventListener('keypress', (e) => { if(e.key==='Enter') sendMessage(); });
-            setupImageViewerGestures();
-
-            audio.addEventListener('timeupdate', updateProgress);
-            audio.addEventListener('ended', nextTrack);
-            document.getElementById('progressBar').addEventListener('input', (e) => {
-                const seekTime = (audio.duration / 100) * e.target.value;
-                audio.currentTime = seekTime;
-            });
-        });
-
-        // Server Functions
-        async function fetchRooms() {
+        // --- Lobby Logic ---
+        async function fetchRooms(showLoader = false) {
+            if(showLoader) toggleLoading(true);
             const rooms = await api('getRooms');
-            // If offline/error or data mismatch, fallback handled by api()
-            roomRegistry = rooms || {};
-            renderRoomList();
+            if(showLoader) toggleLoading(false);
+
+            if (rooms && !rooms.error && typeof rooms === 'object') {
+                roomRegistry = rooms;
+                renderRoomList();
+                updateConnectionStatus(false);
+            } else {
+                updateConnectionStatus(true);
+            }
         }
 
-        async function serverCreateRoom(name, type, pass) {
-            const r = await api('createRoom', { name, type, password: pass });
-            if (r.ok) {
+        function renderRoomList() {
+            const list = document.getElementById('roomsList');
+            list.innerHTML = '';
+            const roomsArray = Object.entries(roomRegistry).map(([name, data]) => ({ name, ...data }));
+            
+            if (roomsArray.length === 0) {
+                list.innerHTML = '<div class="text-center py-10 text-gray-400 text-sm italic">ยังไม่มีห้อง (สร้างเลย!)</div>';
+                return;
+            }
+
+            roomsArray.forEach(room => {
+                const el = document.createElement('div');
+                el.className = 'bg-white/90 p-4 rounded-2xl border border-white shadow-sm flex items-center justify-between group cursor-pointer hover:bg-white transition-all active:scale-95';
+                el.innerHTML = `
+                    <div class="flex items-center gap-3 pointer-events-none text-left">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner ${room.type === 'private' ? 'bg-orange-50 text-orange-400' : 'bg-blue-50 text-blue-400'}">
+                            ${room.type === 'private' ? '🔒' : '#'}
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-700">${room.name}</div>
+                            <div class="text-[10px] text-gray-400">👑 ${room.admin || 'System'}</div>
+                        </div>
+                    </div>
+                    <div class="text-pink-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">เข้าร่วม ➜</div>
+                `;
+                el.onclick = () => attemptJoinRoom(room);
+                list.appendChild(el);
+            });
+        }
+
+        async function createRoom() {
+            const nameInput = document.getElementById('newRoomName');
+            const name = nameInput.value.trim();
+            const type = window.newRoomType || 'public';
+            const pass = document.getElementById('newRoomPass').value;
+            const userInp = document.getElementById('usernameInput').value.trim();
+
+            if(!userInp) return showToast("กรุณาใส่ชื่อเล่นของคุณก่อน");
+            currentUsername = userInp;
+            if(!name) return showToast("กรุณาระบุชื่อห้อง");
+
+            toggleLoading(true);
+            const res = await api('createRoom', { name, type, password: pass, creator: currentUsername });
+            toggleLoading(false);
+
+            if (res.ok) {
                 closeModal('createRoomModal');
                 fetchRooms();
                 enterRoom(name);
-                showToast('สร้างห้องสำเร็จ!');
             } else {
-                showToast('ชื่อห้องซ้ำ หรือเกิดข้อผิดพลาด');
+                showToast("ชื่อห้องซ้ำหรือเกิดข้อผิดพลาด");
             }
         }
 
-        async function serverLoadMessages(room) {
-            const msgs = await api('getMessages', { room });
-            if (Array.isArray(msgs) && msgs.length !== messages.length) {
-                messages = msgs;
-                renderMessages();
+        function attemptJoinRoom(room) {
+            const userInp = document.getElementById('usernameInput').value.trim();
+            if(!userInp) {
+                document.getElementById('usernameInput').focus();
+                return showToast("กรุณาใส่ชื่อเล่นก่อนครับ");
+            }
+            currentUsername = userInp;
+            localStorage.setItem('chat_username', currentUsername);
+
+            if(room.type === 'private') {
+                openPasswordModal(room);
+            } else {
+                enterRoom(room.name);
             }
         }
 
-        async function serverHeartbeat() {
-            const users = await api('presence', { room: currentRoom, user: currentUser });
-            if (Array.isArray(users)) {
-                roomParticipants = users.map(u => ({...u, isMe: u.name === currentUser}));
-                updateOnlineCount();
-                if(!document.getElementById('userListModal').classList.contains('hidden')) {
-                    renderUserListModal();
+        function openPasswordModal(room) {
+            openModal('passwordPromptModal');
+            const passInput = document.getElementById('joinRoomPasswordInput');
+            passInput.value = '';
+            passInput.focus();
+            document.getElementById('confirmJoinBtn').onclick = () => {
+                if(passInput.value === room.password) {
+                    closeModal('passwordPromptModal');
+                    enterRoom(room.name);
+                } else {
+                    showToast("รหัสผ่านไม่ถูกต้อง");
+                }
+            };
+        }
+
+        // --- Chat Logic ---
+        async function enterRoom(name) {
+            currentRoom = name;
+            localStorage.setItem('chat_username', currentUsername);
+            document.getElementById('lobbyView').classList.add('hidden');
+            document.getElementById('chatView').classList.remove('hidden');
+            document.getElementById('currentRoomName').textContent = name;
+            
+            toggleLoading(true);
+            await loadMessages();
+            await updatePresence();
+            toggleLoading(false);
+            
+            pollingIntervals.forEach(clearInterval);
+            pollingIntervals = [
+                setInterval(loadMessages, 4000),
+                setInterval(updatePresence, 10000),
+                setInterval(fetchRooms, 15000)
+            ];
+        }
+
+        function leaveRoom() {
+            pollingIntervals.forEach(clearInterval);
+            pollingIntervals = [];
+            api('leaveRoom', { room: currentRoom, user: currentUsername });
+            audio.pause();
+            currentRoom = null;
+            document.getElementById('chatView').classList.add('hidden');
+            document.getElementById('lobbyView').classList.remove('hidden');
+            fetchRooms();
+        }
+
+        // นำฟังก์ชันล้างประวัติออกตามคำขอ (ยกเลิกการเรียกใช้ปุ่ม)
+        async function resetChatHistory() {
+            if(!confirm("ล้างข้อความทั้งหมดในห้อง?")) return;
+            toggleLoading(true);
+            const res = await api('addMessage', { room: currentRoom, user: currentUsername, text: "CMD:SYSTEM:RESET", isSystem: true });
+            toggleLoading(false);
+            if(res.ok) { messages = []; renderMessages(); showToast("ล้างประวัติเรียบร้อย"); }
+        }
+
+        async function deleteMsg(msgId) {
+            if(!confirm("ลบข้อความนี้?")) return;
+            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:SYSTEM:DELETE:${msgId}`, isSystem: true });
+            loadMessages();
+        }
+
+        async function loadMessages() {
+            if (!currentRoom) return;
+            const msgs = await api('getMessages', { room: currentRoom });
+            if (Array.isArray(msgs)) {
+                const lastResetIndex = msgs.map(m => m.text).lastIndexOf("CMD:SYSTEM:RESET");
+                const afterReset = lastResetIndex !== -1 ? msgs.slice(lastResetIndex + 1) : msgs;
+                
+                const deletedIds = msgs.filter(m => m.text && m.text.startsWith('CMD:SYSTEM:DELETE:')).map(m => m.text.split(':')[3]);
+                const visibleMsgs = afterReset.filter(m => !deletedIds.includes(String(m.id)) && !m.text.startsWith('CMD:SYSTEM:DELETE:'));
+
+                const roomData = roomRegistry[currentRoom];
+                if (roomData) {
+                    isRoomAdmin = (roomData.admin === currentUsername);
+                    updateMusicUI(roomData.musicState || musicState);
+                }
+
+                const latestMusicCmd = visibleMsgs.filter(m => m.text && m.text.startsWith('CMD:MUSIC:')).pop();
+                if (latestMusicCmd && latestMusicCmd.user !== currentUsername) {
+                    syncMusicFromCommand(latestMusicCmd.text);
+                }
+
+                if (JSON.stringify(visibleMsgs) !== JSON.stringify(messages)) {
+                    messages = visibleMsgs;
+                    renderMessages();
                 }
             }
         }
 
-        // Music & Import
+        function renderMessages() {
+            const list = document.getElementById('messagesList');
+            const roomAdmin = roomRegistry[currentRoom]?.admin || '';
+
+            list.innerHTML = messages.map(m => {
+                if(m.isSystem && !m.text.startsWith("CMD:")) return `<div class="text-center my-2 text-[10px] text-gray-400 font-bold uppercase">${m.text}</div>`;
+                if (m.text && (m.text.startsWith('CMD:MUSIC:') || m.text.startsWith("CMD:SYSTEM:"))) return '';
+
+                const isMe = m.user === currentUsername;
+                const isAdmin = m.user === roomAdmin;
+                return `
+                    <div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up relative group">
+                        <div class="max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                            ${!isMe ? `<span class="text-[10px] text-gray-400 mb-1 ml-1 text-left">${m.user} ${isAdmin ? '<span class="text-yellow-500">ADMIN</span>' : ''}</span>` : ''}
+                            <div class="p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-pink-500 text-white rounded-br-sm' : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'}">
+                                ${m.text || ''}
+                                ${m.file ? `<img src="${m.file}" class="mt-2 rounded-lg max-h-40 w-full object-cover">` : ''}
+                                ${isMe ? `<button onclick="deleteMsg('${m.id}')" class="absolute -top-2 -left-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow-md text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">🗑️</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            list.scrollTo(0, list.scrollHeight);
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if(!text) return;
+            input.value = '';
+            await api('addMessage', { room: currentRoom, user: currentUsername, text });
+            loadMessages();
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 300000) return showToast("ไฟล์ต้องเล็กกว่า 300KB");
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                toggleLoading(true);
+                await api('addMessage', { room: currentRoom, user: currentUsername, file: ev.target.result, fileName: file.name });
+                toggleLoading(false);
+                loadMessages();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function updatePresence() {
+            const users = await api('presence', { room: currentRoom, user: currentUsername });
+            if (Array.isArray(users)) {
+                document.getElementById('onlineCountBadge').textContent = users.length;
+                document.getElementById('onlineUsersList').innerHTML = users.map(u => `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl">
+                        <span class="text-sm font-medium text-gray-700">${u.name}</span>
+                        <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // --- Music Logic ---
         function handleMusicUpload(event) {
             const files = event.target.files;
-            if (files.length > 0) {
-                let addedCount = 0;
-                Array.from(files).forEach(file => {
-                    const objectUrl = URL.createObjectURL(file);
-                    playlist.push({
-                        title: file.name.replace(/\.[^/.]+$/, ""), 
-                        artist: "Local File",
-                        src: objectUrl,
-                        isLocal: true
-                    });
-                    addedCount++;
-                });
-                renderPlaylist();
-                showToast(`เพิ่ม ${addedCount} เพลงเรียบร้อย!`);
-                if(playlist.length > 0 && document.getElementById('libraryView').classList.contains('hidden')) {} else { showLibrary(); }
-            }
-            event.target.value = ''; 
-        }
-
-        function removeTrack(index) {
-            if (index === currentTrackIndex && isPlaying) {
-                audio.pause();
-                isPlaying = false;
-                updatePlayButtons();
-                document.getElementById('miniPlayer').classList.add('hidden');
-            }
-            if (index < currentTrackIndex) currentTrackIndex--;
-            else if (index === currentTrackIndex) currentTrackIndex = 0;
-
-            playlist.splice(index, 1);
-            renderPlaylist();
-            showToast('ลบเพลงเรียบร้อย');
-        }
-
-        function renderPlaylist() {
-            const list = document.getElementById('libraryView');
-            if (playlist.length === 0) {
-                list.innerHTML = '<div class="text-center text-gray-400 mt-10 text-sm">ยังไม่มีเพลง<br>กดปุ่ม + ด้านบนเพื่อเพิ่มเพลงจากเครื่อง</div>';
-                return;
-            }
-            list.innerHTML = playlist.map((song, index) => `
-                <div onclick="playTrack(${index})" class="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:border-pink-200 cursor-pointer transition-all group relative">
-                    <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 flex items-center justify-center text-lg ${song.isLocal ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}">
-                        ${song.isLocal ? '📂' : '🎵'}
-                    </div>
-                    <div class="flex-grow min-w-0">
-                        <div class="font-bold text-gray-700 text-sm truncate ${index===currentTrackIndex ? 'text-pink-500':''}">${song.title}</div>
-                        <div class="text-[10px] text-gray-400">${song.artist}</div>
-                    </div>
-                    <div class="text-gray-300 text-xs group-hover:hidden">▶</div>
-                    <button onclick="event.stopPropagation(); removeTrack(${index})" class="hidden group-hover:block text-red-400 hover:text-red-600 p-1.5 bg-white rounded-full shadow-sm hover:shadow-md transition-all">🗑️</button>
-                </div>
-            `).join('');
-        }
-
-        function playTrack(index) {
-            if(playlist.length === 0) return;
-            currentTrackIndex = index;
-            const song = playlist[index];
-            audio.src = song.src;
-            audio.play().catch(e => { console.error("Playback error:", e); showToast("ไม่สามารถเล่นไฟล์นี้ได้"); });
-            isPlaying = true;
-            updatePlayerUI(song);
-            showNowPlaying();
-            document.getElementById('miniPlayer').classList.remove('hidden');
-        }
-
-        function updatePlayerUI(song) {
-            document.getElementById('playerSongTitle').textContent = song.title;
-            document.getElementById('playerArtist').textContent = song.artist;
-            document.getElementById('miniTitle').textContent = song.title;
-            document.getElementById('miniArtist').textContent = song.artist;
-            updatePlayButtons();
-        }
-
-        function togglePlayState() {
-            if (audio.paused) {
-                if(!audio.src && playlist.length > 0) playTrack(0);
-                else if (audio.src) audio.play();
-                isPlaying = true;
-            } else {
-                audio.pause();
-                isPlaying = false;
-            }
-            updatePlayButtons();
-        }
-
-        function updatePlayButtons() {
-            const mainBtn = document.getElementById('mainPlayBtn');
-            const miniBtn = document.getElementById('miniPlayIcon');
-            const miniArt = document.getElementById('miniArtContainer');
-            const mainDisc = document.getElementById('playerDisc');
-
-            if (isPlaying) {
-                mainBtn.innerHTML = `<svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
-                miniBtn.textContent = '⏸';
-                miniArt.classList.add('disk-spin');
-                mainDisc.classList.add('disk-spin');
-            } else {
-                mainBtn.innerHTML = `<svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
-                miniBtn.textContent = '▶';
-                miniArt.classList.remove('disk-spin');
-                mainDisc.classList.remove('disk-spin');
-            }
-        }
-
-        function nextTrack() {
-            if(playlist.length === 0) return;
-            let nextIndex = currentTrackIndex + 1;
-            if (nextIndex >= playlist.length) nextIndex = 0;
-            playTrack(nextIndex);
-        }
-
-        function prevTrack() {
-            if(playlist.length === 0) return;
-            let prevIndex = currentTrackIndex - 1;
-            if (prevIndex < 0) prevIndex = playlist.length - 1;
-            playTrack(prevIndex);
-        }
-
-        function updateProgress() {
-            const progress = document.getElementById('progressBar');
-            const currTime = document.getElementById('currTime');
-            const durTime = document.getElementById('durTime');
-            if(isNaN(audio.duration)) return;
-            const percent = (audio.currentTime / audio.duration) * 100;
-            progress.value = percent;
-            currTime.textContent = formatTime(audio.currentTime);
-            durTime.textContent = formatTime(audio.duration);
-        }
-
-        function formatTime(s) {
-            const mins = Math.floor(s / 60);
-            const secs = Math.floor(s % 60);
-            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-        }
-
-        function showLibrary() {
-            document.getElementById('libraryView').classList.remove('hidden');
-            document.getElementById('nowPlayingView').classList.add('hidden');
-            document.getElementById('nowPlayingView').classList.remove('flex');
-            document.getElementById('tabLibrary').classList.replace('border-transparent', 'border-pink-500');
-            document.getElementById('tabLibrary').classList.replace('text-gray-400', 'text-pink-500');
-            document.getElementById('tabNowPlaying').classList.replace('border-pink-500', 'border-transparent');
-            document.getElementById('tabNowPlaying').classList.replace('text-pink-500', 'text-gray-400');
-        }
-
-        function showNowPlaying() {
-            document.getElementById('libraryView').classList.add('hidden');
-            document.getElementById('nowPlayingView').classList.remove('hidden');
-            document.getElementById('nowPlayingView').classList.add('flex');
-            document.getElementById('tabNowPlaying').classList.replace('border-transparent', 'border-pink-500');
-            document.getElementById('tabNowPlaying').classList.replace('text-gray-400', 'text-pink-500');
-            document.getElementById('tabLibrary').classList.replace('border-pink-500', 'border-transparent');
-            document.getElementById('tabLibrary').classList.replace('text-pink-500', 'text-gray-400');
-        }
-
-        // --- App & Room Logic ---
-        function renderRoomList() {
-            const c = document.getElementById('roomListContainer'); c.innerHTML = '';
-            
-            // Handle both Array (API) and Object (Local Mock) formats
-            let roomsArray = [];
-            if (Array.isArray(roomRegistry)) {
-                roomsArray = roomRegistry;
-            } else if (roomRegistry && typeof roomRegistry === 'object') {
-                roomsArray = Object.entries(roomRegistry).map(([k, v]) => ({name: k, ...v}));
-            }
-
-            if(roomsArray.length === 0) {
-                c.innerHTML = '<div class="text-center text-white/50 text-xs mt-4">ยังไม่มีห้อง (สร้างเลย!)</div>';
-                return;
-            }
-
-            roomsArray.forEach(data => {
-                const isPrivate = data.type === 'private';
-                const d = document.createElement('div');
-                d.className = "flex items-center justify-between p-4 bg-white/70 backdrop-blur-sm rounded-2xl border border-white shadow-sm hover:shadow-md transition-all cursor-pointer group mb-2";
-                d.onclick = () => attemptJoinRoom(data.name, data.type);
-                d.innerHTML = `<div class="flex items-center gap-4"><div class="w-12 h-12 ${isPrivate?'bg-orange-100 text-orange-400':'bg-blue-100 text-blue-400'} rounded-2xl flex items-center justify-center font-bold text-xl shadow-inner">${isPrivate?'🔒':'#'}</div><div><div class="font-bold text-base text-gray-700">${data.name}</div><div class="text-[10px] text-gray-400 font-medium uppercase tracking-wide bg-white px-2 py-0.5 rounded-md inline-block mt-1 shadow-sm border border-gray-100">${isPrivate?'Private':'Public'}</div></div></div><div class="text-gray-300">➜</div>`;
-                c.appendChild(d);
+            if (!files || files.length === 0) return;
+            Array.from(files).forEach(file => {
+                const track = { 
+                    title: file.name.replace(/\.[^/.]+$/, ""), 
+                    artist: "Local File", 
+                    src: URL.createObjectURL(file) 
+                };
+                userPlaylist.push(track);
             });
-        }
-        
-        function attemptJoinRoom(name, type) {
-            const user = document.getElementById('loginUsername').value.trim();
-            if(!user) { showToast('กรุณาใส่ชื่อของคุณ'); return; }
-            if(type === 'private') { pendingJoinRoomName = name; document.getElementById('promptRoomName').textContent = name; document.getElementById('passwordPromptModal').classList.remove('hidden'); } else { enterRoom(name); }
-        }
-        
-        function enterRoom(name) {
-            currentUser = document.getElementById('loginUsername').value.trim(); 
-            localStorage.setItem('last_username', currentUser); 
-            currentRoom = name;
-            
-            messages = [];
-            renderMessages(); 
-            serverLoadMessages(name);
-            pollingInterval = setInterval(() => serverLoadMessages(currentRoom), 5000);
-            presenceInterval = setInterval(serverHeartbeat, 10000);
-            serverHeartbeat(); // First beat
-
-            document.getElementById('lobbyScreen').classList.add('hidden'); 
-            document.getElementById('chatApp').classList.remove('hidden'); 
-            document.getElementById('chatApp').classList.add('flex');
-            document.getElementById('displayRoomName').textContent = name; 
-            document.getElementById('displayUsername').textContent = currentUser;
-            
-            // Determine type for lock icon
-            let isPrivate = false;
-            // Check in array or object
-            if (Array.isArray(roomRegistry)) {
-                const r = roomRegistry.find(r => r.name === name);
-                if (r && r.type === 'private') isPrivate = true;
-            } else if (roomRegistry[name] && roomRegistry[name].type === 'private') {
-                isPrivate = true;
-            }
-            document.getElementById('roomLockIcon').classList[isPrivate?'remove':'add']('hidden');
-        }
-        
-        function leaveRoom() {
-            clearInterval(pollingInterval);
-            clearInterval(presenceInterval);
-            document.getElementById('chatApp').classList.remove('flex'); 
-            document.getElementById('chatApp').classList.add('hidden');
-            document.getElementById('lobbyScreen').classList.remove('hidden'); 
-            currentRoom = null;
-            closeMediaPlayer(); 
-        }
-        
-        function renderMessages() {
-            const c = document.getElementById('chatMessages');
-            c.innerHTML = messages.map(m => {
-                if(m.isSystem) return `<div class="flex justify-center my-3"><span class="text-[10px] text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm">${m.text}</span></div>`;
-                const isMe = m.user === currentUser;
-                return `<div class="flex ${isMe?'justify-end':'justify-start'} mb-4 animate-slide-up"><div class="max-w-[75%] flex flex-col ${isMe?'items-end':'items-start'}">${!isMe?`<div class="text-[10px] text-gray-400 mb-1 ml-1">${m.user}</div>`:''} <div class="${isMe?'bg-gradient-to-tr from-pink-500 to-rose-400 text-white shadow-pink-200':'bg-white text-gray-700 border border-gray-100'} px-4 py-2.5 rounded-2xl ${isMe?'rounded-br-sm':'rounded-bl-sm'} text-sm shadow-md">${m.text||''} ${m.file?renderAttachment(m):''}</div></div></div>`;
-            }).join('');
-            c.scrollTop = c.scrollHeight;
-        }
-        
-        function renderAttachment(m) { 
-            if (!m.file) return '';
-            const isImg = (typeof m.file === 'string') && (m.file.startsWith('data:image') || m.file.match(/\.(jpeg|jpg|gif|png)$/) != null);
-            if(isImg) return `<img src="${m.file}" class="mt-2 rounded-xl max-h-48 w-full object-cover border-2 border-white/50 shadow-sm cursor-pointer" onclick="openImageViewer('${m.file}')">`; 
-            return `<div class="mt-1 flex items-center gap-2 text-xs bg-white/20 p-2 rounded-lg">📎 <span>${m.fileName || 'File'}</span></div>`; 
-        }
-        
-        async function sendMessage() {
-            const txt = document.getElementById('messageInput').value.trim();
-            const fileInput = document.getElementById('fileInput'); // Use local var to avoid global scope confusion
-            const file = fileInput.files[0];
-            
-            if (!txt && !file) return;
-
-            // Check file size
-            if (file && file.size > 300 * 1024) {
-                 showToast('ไฟล์ใหญ่เกิน 300KB');
-                 return;
-            }
-
-            let fData = null, fName = null, fType = null;
-            if (file) {
-                fData = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); });
-                fName = file.name; fType = file.type;
-            }
-            await api('addMessage', { room: currentRoom, user: currentUser, text: txt, file: fData, fileName: fName, fileType: fType });
-            document.getElementById('messageInput').value = '';
-            clearFile();
-            serverLoadMessages(currentRoom);
+            renderPlaylist();
+            showToast(`เพิ่มเพลง ${files.length} รายการ`);
+            if (userPlaylist.length === files.length) changeTrackTo(0);
         }
 
-        // Utils
-        function toggleUserList() { const m = document.getElementById('userListModal'); if(m.classList.contains('hidden')) { renderUserListModal(); m.classList.remove('hidden'); } else m.classList.add('hidden'); }
-        function updateOnlineCount() { const el=document.getElementById('onlineCount'); if(el) el.textContent=roomParticipants.length; }
-        
-        function renderUserListModal() {
-            const c = document.getElementById('userListContent');
-            if(!c) return;
-            
-            if(roomParticipants.length === 0) {
-                c.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">กำลังโหลด...</div>';
-                return;
+        function removeTrack(event, index) {
+            event.stopPropagation();
+            if(confirm("ลบเพลงออกจากรายการ?")) {
+                const track = userPlaylist[index];
+                if (track.src.startsWith('blob:')) {
+                    URL.revokeObjectURL(track.src);
+                }
+                userPlaylist.splice(index, 1);
+                if (musicState.playingIndex === index) { 
+                    audio.pause(); 
+                    musicState.isPlaying = false; 
+                } else if (musicState.playingIndex > index) {
+                    musicState.playingIndex--;
+                }
+                renderPlaylist(); 
+                applyMusicState();
             }
-            
-            c.innerHTML = roomParticipants.map(u => `
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-xl">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br ${u.isMe?'from-pink-400 to-rose-400':'from-blue-300 to-indigo-300'} flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                            ${u.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div class="text-sm text-gray-700 font-medium">
-                            ${u.name} ${u.isMe?'(คุณ)':''}
+        }
+
+        // คืนปุ่มถังขยะในรายการเพลย์ลิสต์ (ตามคำขอ)
+        function renderPlaylist() {
+            const container = document.getElementById('playlistContainer');
+            if (userPlaylist.length === 0) { 
+                container.innerHTML = '<div class="text-center text-gray-400 text-[10px] py-4">ยังไม่มีไฟล์เพลง</div>'; 
+                return; 
+            }
+            container.innerHTML = userPlaylist.map((t, i) => `
+                <div onclick="changeTrackTo(${i})" class="p-2.5 rounded-xl flex items-center justify-between group cursor-pointer transition-colors ${musicState.playingIndex === i ? 'bg-pink-50' : 'hover:bg-gray-50'}">
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="text-[10px] font-bold ${musicState.playingIndex === i ? 'text-pink-500' : 'text-gray-400'}">${i+1}</div>
+                        <div class="overflow-hidden text-left">
+                            <div class="text-xs font-bold text-gray-700 truncate max-w-[150px]">${t.title}</div>
                         </div>
                     </div>
-                    <div class="w-2 h-2 rounded-full bg-green-400 shadow-sm animate-pulse"></div>
+                    <div class="flex items-center gap-2">
+                        ${musicState.playingIndex === i && musicState.isPlaying ? '<span class="text-pink-500 animate-bounce text-xs mr-2">🎵</span>' : ''}
+                        <button onclick="removeTrack(event, ${i})" class="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-red-500 transition-all">🗑️</button>
+                    </div>
                 </div>
             `).join('');
         }
 
-        function showRoomInfo() { 
-             let r = null; 
-             if(Array.isArray(roomRegistry)) r = roomRegistry.find(item => item.name === currentRoom); 
-             else r = roomRegistry[currentRoom];
-             
-             document.getElementById('infoModalRoomName').textContent = currentRoom; 
-             const tb = document.getElementById('infoModalType'); 
-             
-             if(r && r.type === 'private'){ 
-                 tb.textContent='Private'; 
-                 tb.className='text-xs px-2 py-0.5 rounded-md font-medium bg-orange-100 text-orange-500'; 
-                 // Note: In real app, password shouldn't be exposed like this if not admin
-                 document.getElementById('infoModalPassword').textContent = r.password || '******'; 
-                 document.getElementById('infoModalPassword').parentElement.parentElement.classList.remove('hidden'); 
-             } else { 
-                 tb.textContent='Public'; 
-                 tb.className='text-xs px-2 py-0.5 rounded-md font-medium bg-blue-100 text-blue-500'; 
-                 document.getElementById('infoModalPassword').parentElement.parentElement.classList.add('hidden'); 
-             } 
-             document.getElementById('roomInfoModal').classList.remove('hidden'); 
-        }
-        
-        function copyPassword() { const t=document.createElement('textarea'); t.value=document.getElementById('infoModalPassword').textContent; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); showToast('คัดลอกรหัสแล้ว'); }
-        function toggleEmoji() { const p = document.getElementById('emojiPanel'); p.classList.toggle('hidden'); }
-        function addEmoji(e) { const i = document.getElementById('messageInput'); i.value += e; i.focus(); }
-        function openMediaPlayer() { document.getElementById('mediaPlayerModal').classList.remove('hidden'); showLibrary(); }
-        function closeMediaPlayer() { document.getElementById('mediaPlayerModal').classList.add('hidden'); }
-        function handleFileSelect(e) { if(e.target.files[0]) { document.getElementById('previewContainer').classList.remove('hidden'); document.getElementById('filePreviewBadge').classList.remove('hidden'); document.getElementById('filePreviewBadge').classList.add('flex'); document.getElementById('fileName').textContent=e.target.files[0].name; } }
-        function clearFile() { document.getElementById('fileInput').value=''; document.getElementById('previewContainer').classList.add('hidden'); }
-        function openCreateRoomModal() { const u=document.getElementById('loginUsername').value.trim(); if(!u){showToast('กรุณาใส่ชื่อของคุณ');return;} document.getElementById('createRoomModal').classList.remove('hidden'); }
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-        function toggleRoomType(v) {
-            const p1=document.getElementById('typePrivateLabel'), p2=document.getElementById('typePublicLabel'), inp=document.getElementById('newRoomPassword');
-            const act=(e)=>{e.classList.remove('opacity-60','grayscale','border-transparent');e.classList.add('border-2'); if(e.id.includes('Private'))e.classList.add('border-orange-400');else e.classList.add('border-pink-400');};
-            const inact=(e)=>{e.classList.add('opacity-60','grayscale','border-transparent');e.classList.remove('border-2','border-pink-400','border-orange-400');};
-            if(v==='private'){ act(p1); inact(p2); inp.classList.remove('hidden'); } else { act(p2); inact(p1); inp.classList.add('hidden'); }
-        }
-        function confirmCreateRoom() {
-            const n=document.getElementById('newRoomName').value.trim(), t=document.querySelector('input[name="roomType"]:checked').value, p=document.getElementById('newRoomPassword').value.trim();
-            if(!n){showToast('ระบุชื่อห้อง');return;} if(t==='private'&&!p){showToast('ระบุรหัสผ่าน');return;} 
-            serverCreateRoom(n, t, p);
-        }
-        function quickJoin(){ const n=document.getElementById('quickJoinRoomName').value; if(n) attemptJoinRoom(n, 'public'); }
-        function submitPassword(){ 
-            let r = null; 
-            if(Array.isArray(roomRegistry)) r = roomRegistry.find(i => i.name === pendingJoinRoomName); 
-            else r = roomRegistry[pendingJoinRoomName];
+        audio.ontimeupdate = () => {
+            if (isUserSeeking) return;
+            const prog = document.getElementById('audioProgress');
+            const curr = document.getElementById('currentTime');
+            const dur = document.getElementById('durationTime');
+            if (!audio.duration) return;
+            prog.value = (audio.currentTime / audio.duration) * 100;
+            curr.textContent = formatTime(audio.currentTime);
+            dur.textContent = formatTime(audio.duration);
+        };
+
+        async function handleSeek(percent) {
+            if (!audio.duration) return;
+            isUserSeeking = true;
+            const targetTime = (percent / 100) * audio.duration;
+            audio.currentTime = targetTime;
             
-            if(r && document.getElementById('promptPassword').value === r.password){ closeModal('passwordPromptModal'); enterRoom(pendingJoinRoomName); } else { showToast('รหัสผ่านผิด'); } 
+            const now = Date.now();
+            if (now - lastCommandTimestamp > 1000) {
+                lastCommandTimestamp = now;
+                await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:MUSIC:SEEK:${targetTime.toFixed(2)}`, isSystem: true });
+            }
+            setTimeout(() => { isUserSeeking = false; }, 500);
         }
-        function showToast(m){ const t=document.getElementById('statusToast'); t.textContent=m; t.classList.remove('opacity-0','-translate-y-10'); setTimeout(()=>t.classList.add('opacity-0','-translate-y-10'),2000); }
-        
-        let scale=1, pX=0, pY=0, sX=0, sY=0, imgEl=null, panning=false;
-        function openImageViewer(s) { const m=document.getElementById('imageViewerModal'); imgEl=document.getElementById('viewerImage'); imgEl.src=s; scale=1; pX=0; pY=0; setTr(); m.classList.remove('hidden'); setTimeout(()=>m.classList.remove('opacity-0'),10); }
-        function closeImageViewer() { const m=document.getElementById('imageViewerModal'); m.classList.add('opacity-0'); setTimeout(()=>{m.classList.add('hidden');imgEl.src='';},300); }
-        function setTr() { if(imgEl) imgEl.style.transform = `translate(${pX}px, ${pY}px) scale(${scale})`; }
-        function setupImageViewerGestures() {
-            const c=document.getElementById('zoomContainer');
-            c.addEventListener('mousedown',e=>{if(scale>1){e.preventDefault();sX=e.clientX-pX;sY=e.clientY-pY;panning=true;}});
-            c.addEventListener('mouseup',()=>{panning=false;});
-            c.addEventListener('mousemove',e=>{if(!panning)return;e.preventDefault();pX=e.clientX-sX;pY=e.clientY-sY;setTr();});
-            c.addEventListener('touchstart',e=>{if(e.touches.length===1&&scale>1){sX=e.touches[0].clientX-pX;sY=e.touches[0].clientY-pY;panning=true;}});
-            c.addEventListener('touchmove',e=>{if(e.touches.length===1&&panning){e.preventDefault();pX=e.touches[0].clientX-sX;pY=e.touches[0].clientY-sY;setTr();}});
-            c.addEventListener('touchend',()=>{panning=false;});
+
+        function syncMusicFromCommand(cmd) {
+            const parts = cmd.split(':');
+            const action = parts[2];
+            const val = parts[3];
+            
+            if (action === 'PLAY') {
+                const idx = parseInt(val);
+                if (musicState.playingIndex !== idx || !musicState.isPlaying) {
+                    musicState.playingIndex = idx;
+                    musicState.isPlaying = true;
+                    applyMusicState();
+                }
+            } else if (action === 'PAUSE') {
+                if (musicState.isPlaying) {
+                    musicState.isPlaying = false;
+                    applyMusicState();
+                }
+            } else if (action === 'STOP') {
+                musicState.isPlaying = false;
+                audio.currentTime = 0;
+                applyMusicState();
+            } else if (action === 'SEEK' && !isUserSeeking) {
+                const time = parseFloat(val);
+                if (Math.abs(audio.currentTime - time) > 5) {
+                    audio.currentTime = time;
+                }
+            }
         }
+
+        function updateMusicUI(state) {
+            musicState = state;
+            const track = userPlaylist[musicState.playingIndex];
+            if (track) {
+                document.getElementById('playerSongTitle').textContent = track.title;
+                document.getElementById('miniSongTitle').textContent = track.title;
+                document.getElementById('durationTime').textContent = formatTime(audio.duration);
+            }
+            document.getElementById('playerPlayBtn').textContent = musicState.isPlaying ? '⏸' : '▶';
+            document.getElementById('adminBadge').classList.toggle('hidden', !isRoomAdmin);
+            renderPlaylist();
+        }
+
+        function applyMusicState() {
+            const track = userPlaylist[musicState.playingIndex];
+            if (!track) return;
+            if (audio.src !== track.src) audio.src = track.src;
+            if (musicState.isPlaying) {
+                audio.play().catch(() => {});
+                document.getElementById('musicToggleBtn').classList.add('bg-pink-50', 'text-pink-500', 'animate-pulse');
+                document.getElementById('miniPlayer').classList.remove('hidden');
+                document.getElementById('playerDisc').classList.add('disk-spin');
+                document.getElementById('miniDisc').classList.add('disk-spin');
+            } else {
+                audio.pause();
+                document.getElementById('musicToggleBtn').classList.remove('bg-pink-50', 'text-pink-500', 'animate-pulse');
+                document.getElementById('playerDisc').classList.remove('disk-spin');
+                document.getElementById('miniDisc').classList.remove('disk-spin');
+            }
+        }
+
+        window.toggleMusicPlayback = async () => {
+            if (userPlaylist.length === 0) return showToast("เพิ่มเพลงก่อน");
+            const newIsPlaying = !musicState.isPlaying;
+            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:MUSIC:${newIsPlaying ? 'PLAY' : 'PAUSE'}:${musicState.playingIndex}`, isSystem: true });
+        };
+
+        window.stopMusicPlayback = async () => {
+            if (userPlaylist.length === 0) return;
+            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:MUSIC:STOP:0`, isSystem: true });
+        };
+
+        window.changeTrackTo = async (idx) => {
+            if (!userPlaylist[idx]) return;
+            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:MUSIC:PLAY:${idx}`, isSystem: true });
+        };
+
+        window.changeTrack = (dir) => {
+            if (userPlaylist.length === 0) return;
+            const next = (musicState.playingIndex + dir + userPlaylist.length) % userPlaylist.length;
+            window.changeTrackTo(next);
+        };
+
+        // --- Modals & Utils ---
+        window.showToast = (msg) => {
+            const t = document.getElementById('toast'); t.textContent = msg;
+            t.classList.remove('opacity-0'); t.classList.add('opacity-100');
+            setTimeout(() => { t.classList.remove('opacity-100'); t.classList.add('opacity-0'); }, 3000);
+        };
+        window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
+        window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+        window.setNewRoomType = (type) => {
+            window.newRoomType = type;
+            document.getElementById('typePublicBtn').className = `flex-1 p-2 rounded-xl text-xs font-bold ${type === 'public' ? 'bg-pink-100 text-pink-500 border-2 border-pink-400' : 'bg-gray-50 text-gray-400'}`;
+            document.getElementById('typePrivateBtn').className = `flex-1 p-2 rounded-xl text-xs font-bold ${type === 'private' ? 'bg-orange-100 text-orange-500 border-2 border-orange-400' : 'bg-gray-50 text-gray-400'}`;
+            document.getElementById('newRoomPass').classList.toggle('hidden', type !== 'private');
+        };
+        window.togglePlayerModal = () => openModal('musicModal');
+        window.toggleUserListModal = () => openModal('userModal');
+
+        document.getElementById('usernameInput').addEventListener('input', (e) => {
+            document.getElementById('userAvatar').src = `https://api.dicebear.com/7.x/big-smile/svg?seed=${e.target.value || 'Chat'}`;
+        });
+
+        fetchRooms(true);
     </script>
 </body>
 </html>
