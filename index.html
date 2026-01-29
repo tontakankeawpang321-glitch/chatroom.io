@@ -202,7 +202,7 @@
 
             <div class="w-full max-w-sm space-y-3">
                 <div class="flex gap-2">
-                    <input id="radioUrlInput" class="flex-grow bg-gray-50 border border-gray-100 rounded-xl p-2 text-xs outline-none focus:ring-1 focus:ring-pink-200" placeholder="เพิ่มลิงก์วิทยุเอง (mp3)...">
+                    <input id="radioUrlInput" class="flex-grow bg-gray-50 border border-gray-100 rounded-xl p-2 text-xs outline-none focus:ring-1 focus:ring-pink-200" placeholder="เพิ่มลิงก์วิทยุเอง (mp3/m3u8)...">
                     <button onclick="addNewRadioStation()" class="bg-blue-50 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md">เพิ่ม</button>
                 </div>
                 <div id="playlistContainer" class="w-full space-y-2 max-h-64 overflow-y-auto custom-scroll px-2 border-t pt-3 text-left"></div>
@@ -253,44 +253,22 @@
         let pollingIntervals = [];
         let actingAdmin = 'System'; 
         let musicState = { playingIndex: 0, isPlaying: false };
+        let audioUnlocked = false;
         
-        // 2️⃣ รายการสถานีใหม่ (ใช้ HLS/ByteArk)
+        // 🔥 Updated Radio List (CORS-Friendly / HLS)
         let radioStations = [
-            {
-                title: "COOLfahrenheit",
-                artist: "RS Music",
-                src: "https://coolism-web.cdn.byteark.com/stream/1/playlist.m3u8"
-            },
-            {
-                title: "EFM 94",
-                artist: "Atime Media",
-                src: "https://atime-edge.cdn.byteark.com/efm"
-            },
-            {
-                title: "Green Wave 106.5",
-                artist: "Atime Media",
-                src: "https://atime-edge.cdn.byteark.com/greenwave"
-            },
-            {
-                title: "Chill Online",
-                artist: "Atime Media",
-                src: "https://atime-edge.cdn.byteark.com/chill"
-            },
-            {
-                title: "Cat Radio",
-                artist: "Cat Radio",
-                src: "https://www.thisiscat.com/catradio.mp3"
-            },
-            {
-                title: "Looktung Network",
-                artist: "ลูกทุ่ง",
-                src: "https://radio.looktung.net:8000/looktung"
-            },
-            {
-                title: "Mellow POP",
-                artist: "MCOT",
-                src: "https://radio.mcot.net/mellow"
-            }
+            { title: "COOLfahrenheit", artist: "RS Music", src: "https://coolism-web.cdn.byteark.com/stream/1/playlist.m3u8" },
+            { title: "EFM 94", artist: "Atime", src: "https://atime-edge.cdn.byteark.com/efm/playlist.m3u8" },
+            { title: "Green Wave 106.5", artist: "Atime", src: "https://atime-edge.cdn.byteark.com/greenwave/playlist.m3u8" },
+            { title: "Chill Online", artist: "Atime", src: "https://atime-edge.cdn.byteark.com/chill/playlist.m3u8" },
+            { title: "HITZ Thailand", artist: "Tero", src: "https://teroradio-hitz955.cdn.byteark.com/hitz955/playlist.m3u8" },
+            { title: "EAZY FM 105.5", artist: "Tero", src: "https://teroradio-eazyfm.cdn.byteark.com/eazyfm/playlist.m3u8" },
+            { title: "Flex 104.5", artist: "Flex", src: "https://fj1045.cdn.byteark.com/live/playlist.m3u8" },
+            { title: "Met 107", artist: "MCOT", src: "https://mcot-web.cdn.byteark.com/met107/playlist.m3u8" },
+            { title: "Active 99", artist: "MCOT", src: "https://mcot-web.cdn.byteark.com/fm99/playlist.m3u8" },
+            { title: "MCOT 95", artist: "MCOT", src: "https://mcot-web.cdn.byteark.com/fm95/playlist.m3u8" },
+            { title: "Cat Radio", artist: "Indie", src: "https://www.thisiscat.com/catradio.mp3" },
+            { title: "Radio Thailand", artist: "NBT", src: "https://nbt1.prd.go.th/live/fm925.m3u8" }
         ];
 
         // 2️⃣ ปรับการตั้งค่า audio + appendChild (เพื่อให้ Browser ยอมรับ)
@@ -306,11 +284,37 @@
         audio.onplaying = () => showToast("📻 วิทยุกำลังเล่น");
         audio.onwaiting = () => showToast("⏳ กำลังโหลดสัญญาณ...");
         audio.onstalled = () => showToast("⚠️ สัญญาณขาด");
-        audio.onerror = () => {
-            if (musicState.isPlaying) {
-                console.log("Stream error → Reconnecting...");
+        
+        // 🔥 ฟังก์ชัน Unlock Audio แบบชัวร์
+        function unlockAudioWithSource() {
+            if (audioUnlocked) return;
+            
+            const unlockSrc = radioStations[0].src;
+            
+            if (unlockSrc.includes(".m3u8")) {
+                if (Hls.isSupported()) {
+                   if(hls) { hls.destroy(); }
+                   hls = new Hls();
+                   hls.loadSource(unlockSrc);
+                   hls.attachMedia(audio);
+                } else if (audio.canPlayType("application/vnd.apple.mpegurl")) {
+                   audio.src = unlockSrc;
+                }
+            } else {
+                audio.src = unlockSrc;
             }
-        };
+
+            audio.muted = true;
+            
+            audio.play().then(() => {
+                audio.pause();
+                audio.muted = false;
+                audioUnlocked = true;
+                console.log("🔓 Audio unlocked successfully");
+            }).catch(err => {
+                console.warn("Unlock failed", err);
+            });
+        }
 
         function isRealRoomAdmin() {
             return roomRegistry[currentRoom]?.admin === currentUsername;
@@ -494,7 +498,6 @@
 
             if (actingAdmin !== 'System') showToast(`โอนหัวห้องให้ ${newAdminName} แล้ว`);
             
-            // 🔥 ดึงข้อมูลห้องล่าสุดจาก Server ทันที
             const rooms = await api('getRooms');
             if (rooms && !rooms.error) {
                 roomRegistry = rooms;
@@ -508,7 +511,6 @@
         async function loadMessages() {
             if (!currentRoom) return;
             
-            // ✅ ใช้ข้อมูล Admin จาก roomRegistry ทันที
             actingAdmin = roomRegistry[currentRoom]?.admin || 'System';
 
             const msgs = await api('getMessages', { room: currentRoom });
@@ -645,7 +647,7 @@
                 // 🔥 ถ้าเป็น HLS (.m3u8)
                 if (station.src.includes(".m3u8")) {
                     if (hls) { 
-                        hls.detachMedia(); // detach ก่อน destroy ตามคำแนะนำ
+                        hls.detachMedia();
                         hls.destroy(); 
                         hls = null; 
                     }
@@ -780,11 +782,7 @@
         window.togglePlayerModal = () => { 
             openModal('musicModal'); 
             renderRadioList(); 
-            // Unlock audio context
-            audio.play().then(() => {
-                audio.pause();
-                audio.currentTime = 0;
-            }).catch(()=>{});
+            unlockAudioWithSource(); // ✅ เรียกฟังก์ชัน unlock ใหม่
         };
         window.toggleUserListModal = () => { openModal('userModal'); updatePresence(); };
         
