@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chatroom (Realtime Tabs)</title>
+    <title>Chatroom (GAS Edition)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script>
@@ -70,18 +70,47 @@
         .cursor-grabbing { cursor: grabbing; }
         .disk-spin { animation: spin 10s linear infinite; }
         .paused { animation-play-state: paused; }
+        
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: #ff9a9e;
+            cursor: pointer;
+            margin-top: -4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body class="h-screen w-full flex flex-col overflow-hidden">
 
+    <!-- Audio Element -->
+    <audio id="audioPlayer" preload="auto"></audio>
+
+    <!-- Hidden Input for Music Import -->
+    <input type="file" id="musicUploadInput" multiple accept=".mp3, .wav, audio/*" class="hidden" onchange="handleMusicUpload(event)">
+
     <!-- ==================== LOBBY SCREEN ==================== -->
     <div id="lobbyScreen" class="flex-grow flex flex-col p-6 animate-fade-in max-w-md mx-auto w-full justify-center">
         <div class="text-center mb-10">
-            <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl animate-bounce-slow border-4 border-white">
-                <span class="text-5xl">💬</span>
+            <div class="w-28 h-28 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl animate-bounce-slow border-4 border-white p-2">
+                <img src="https://api.dicebear.com/9.x/big-smile/svg?seed=Cookie" alt="Cute Icon" class="w-full h-full object-cover rounded-full">
             </div>
             <h1 class="text-4xl font-bold tracking-tight cute-gradient-text drop-shadow-sm">Chatroom</h1>
-            <p class="text-white font-medium text-sm mt-2 opacity-90">คอมมูนิตี้เพลงและแชท</p>
+            <p class="text-white font-medium text-sm mt-2 opacity-90">เชื่อมต่อ Server GAS</p>
         </div>
 
         <div class="glass-card rounded-3xl p-6 space-y-5 shadow-xl">
@@ -116,10 +145,12 @@
 
         <div class="mt-6 flex-grow overflow-hidden flex flex-col">
             <div class="flex justify-between items-center mb-3 px-2">
-                <span class="text-xs text-white font-bold uppercase drop-shadow-md">ห้องทั้งหมด</span>
-                <button onclick="renderRoomList()" class="text-xs text-white bg-white/20 px-2 py-1 rounded-full hover:bg-white/40 transition-all">รีเฟรช ↺</button>
+                <span class="text-xs text-white font-bold uppercase drop-shadow-md">ห้องทั้งหมด (Server)</span>
+                <button onclick="fetchRooms()" class="text-xs text-white bg-white/20 px-2 py-1 rounded-full hover:bg-white/40 transition-all">รีเฟรช ↺</button>
             </div>
-            <div id="roomListContainer" class="flex-grow overflow-y-auto space-y-2 pr-1 hide-scroll pb-4"></div>
+            <div id="roomListContainer" class="flex-grow overflow-y-auto space-y-2 pr-1 hide-scroll pb-4">
+                <div class="text-center text-white/50 text-xs mt-4">กำลังโหลดข้อมูลห้อง...</div>
+            </div>
         </div>
     </div>
 
@@ -135,9 +166,7 @@
                     <div class="flex items-center gap-2">
                         <div id="displayRoomName" class="font-bold text-gray-800 text-base truncate max-w-[150px]">Room Name</div>
                         <span id="roomLockIcon" class="hidden text-[10px] bg-orange-100 text-orange-500 px-1.5 rounded-md">🔒</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-300 group-hover:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-300 group-hover:text-blue-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
                     </div>
                     <div class="text-[11px] text-gray-400 flex items-center gap-1 font-medium">
                         <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
@@ -151,35 +180,34 @@
                 </button>
                 <button onclick="toggleUserList()" class="text-blue-500 p-2 bg-blue-50 hover:bg-blue-100 rounded-full transition-colors border border-blue-100 shadow-sm relative">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                    <span id="onlineCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border-2 border-white font-bold">1</span>
+                    <span id="onlineCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border-2 border-white font-bold">0</span>
                 </button>
             </div>
         </div>
 
         <div id="chatMessages" class="flex-grow overflow-y-auto p-4 space-y-4 scroll-smooth pb-32 bg-slate-50"></div>
 
-        <!-- Mini Player -->
+        <!-- Mini Player (Only for MP3) -->
         <div id="miniPlayer" class="hidden absolute bottom-[80px] left-3 right-3 bg-white/95 backdrop-blur-md rounded-2xl p-2 flex items-center justify-between shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-20 border border-pink-100 ring-1 ring-pink-50 cursor-pointer" onclick="openMediaPlayer()">
             <div class="flex items-center gap-3 overflow-hidden">
-                <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-xs text-pink-500 flex-shrink-0 shadow-inner overflow-hidden border-2 border-white animate-spin-slow" id="miniArtContainer">
-                    <img id="miniThumb" src="" class="w-full h-full object-cover hidden">
-                    <span id="miniIcon">🎵</span>
+                <div class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center text-xs text-white flex-shrink-0 shadow-inner overflow-hidden border-2 border-gray-700 relative" id="miniArtContainer">
+                    <div class="absolute inset-0 border-2 border-gray-600 rounded-full opacity-50"></div>
+                    <div class="w-3 h-3 bg-white rounded-full z-10"></div>
                 </div>
                 <div class="flex-grow min-w-0">
                     <div id="miniTitle" class="text-xs font-bold text-gray-800 truncate">Song Title</div>
-                    <div class="text-[10px] text-pink-500 truncate font-medium">YouTube Music</div>
+                    <div id="miniArtist" class="text-[10px] text-pink-500 truncate font-medium">Artist</div>
                 </div>
             </div>
             <div class="flex items-center gap-1 pr-2">
                 <button onclick="event.stopPropagation(); togglePlayState()" class="w-8 h-8 flex items-center justify-center bg-pink-100 text-pink-500 rounded-full hover:bg-pink-200 transition-colors">
-                    <span id="miniPlayIcon">⏸</span>
+                    <span id="miniPlayIcon">▶</span>
                 </button>
             </div>
         </div>
 
         <!-- Input -->
         <div class="absolute bottom-0 w-full bg-white border-t border-gray-100 p-3 z-30 pb-safe">
-            
             <div id="emojiPanel" class="hidden mb-2 bg-white rounded-2xl shadow-lg border border-pink-100 p-3 grid grid-cols-8 gap-2 overflow-y-auto max-h-40 animate-slide-up">
                 <button onclick="addEmoji('😀')" class="hover:bg-pink-50 p-1 rounded text-xl">😀</button>
                 <button onclick="addEmoji('😂')" class="hover:bg-pink-50 p-1 rounded text-xl">😂</button>
@@ -192,73 +220,64 @@
                 <button onclick="addEmoji('❤️')" class="hover:bg-pink-50 p-1 rounded text-xl">❤️</button>
                 <button onclick="addEmoji('🎉')" class="hover:bg-pink-50 p-1 rounded text-xl">🎉</button>
             </div>
-
             <div id="previewContainer" class="hidden flex gap-2 mb-2 px-1">
                 <div id="filePreviewBadge" class="hidden bg-blue-50 text-blue-600 text-xs px-3 py-1.5 rounded-full flex items-center gap-2 border border-blue-100 font-medium">
                     <span class="text-lg">📎</span> <span id="fileName" class="truncate max-w-[150px]">File</span> 
                     <button onclick="clearFile()" class="ml-2 text-blue-300 hover:text-blue-600 bg-white rounded-full w-4 h-4 flex items-center justify-center">✕</button>
                 </div>
             </div>
-
             <div class="flex items-end gap-2 bg-gray-50 p-1.5 rounded-3xl border border-gray-200 focus-within:border-pink-300 focus-within:ring-2 focus-within:ring-pink-100 transition-all shadow-sm">
-                <button onclick="document.getElementById('fileInput').click()" class="p-2.5 text-gray-400 hover:text-blue-500 transition-colors bg-white rounded-full shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                </button>
+                <button onclick="document.getElementById('fileInput').click()" class="p-2.5 text-gray-400 hover:text-blue-500 transition-colors bg-white rounded-full shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg></button>
                 <div class="flex-grow flex items-center py-2.5 px-2 relative">
                     <input type="text" id="messageInput" placeholder="พิมพ์ข้อความ..." class="bg-transparent w-full text-sm outline-none text-gray-700 placeholder-gray-400 max-h-24 font-medium pr-8" autocomplete="off">
-                    <button onclick="toggleEmoji()" class="absolute right-0 text-gray-400 hover:text-yellow-500 transition-colors p-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </button>
+                    <button onclick="toggleEmoji()" class="absolute right-0 text-gray-400 hover:text-yellow-500 transition-colors p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>
                 </div>
-                <button onclick="sendMessage()" class="p-2.5 text-white bg-gradient-to-r from-pink-400 to-rose-500 rounded-full shadow-md hover:shadow-lg transition-all transform active:scale-90" id="sendButton">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
-                </button>
+                <button onclick="sendMessage()" class="p-2.5 text-white bg-gradient-to-r from-pink-400 to-rose-500 rounded-full shadow-md hover:shadow-lg transition-all transform active:scale-90" id="sendButton"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg></button>
             </div>
             <input type="file" id="fileInput" class="hidden" onchange="handleFileSelect(event)">
             <input type="file" id="profileInput" class="hidden" onchange="handleProfileSelect(event)">
         </div>
     </div>
 
-    <!-- ==================== MODALS ==================== -->
-    
+    <!-- ==================== MEDIA PLAYER MODAL ==================== -->
     <div id="mediaPlayerModal" class="hidden fixed inset-0 z-50 bg-white/95 backdrop-blur-xl flex flex-col animate-slide-up">
         <div class="flex items-center justify-between px-6 py-5 bg-white/50">
             <button onclick="closeMediaPlayer()" class="text-gray-400 hover:text-gray-800 transition-colors p-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button>
             <div class="text-xs uppercase tracking-widest text-pink-500 font-bold bg-pink-50 px-3 py-1 rounded-full">Music Player</div>
-            <div class="w-8"></div>
+            <button onclick="document.getElementById('musicUploadInput').click()" class="text-blue-500 hover:text-blue-700 font-bold text-xs flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-full"><span>+</span> เพิ่มเพลง</button>
         </div>
-        <div class="flex-grow flex flex-col px-8 pt-2 pb-8 overflow-y-auto">
-            <div id="searchView" class="block">
-                <div class="relative mb-6">
-                    <div class="flex items-center bg-gray-100 rounded-2xl px-4 py-3 border border-transparent focus-within:border-pink-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-pink-100 transition-all">
-                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        <input type="text" id="youtubeInput" placeholder="ค้นหาชื่อเพลง..." onkeypress="if(event.key === 'Enter') performSearch()" class="bg-transparent w-full outline-none text-gray-700 text-sm placeholder-gray-400 font-medium">
+        <div class="flex-grow flex flex-col px-6 pt-2 pb-8 overflow-y-auto">
+            <div id="sectionMP3" class="flex-grow flex flex-col">
+                <div class="flex border-b border-gray-100 mb-4">
+                    <button onclick="showLibrary()" id="tabLibrary" class="flex-1 pb-2 text-sm font-bold text-pink-500 border-b-2 border-pink-500 transition-colors">รายการเพลง</button>
+                    <button onclick="showNowPlaying()" id="tabNowPlaying" class="flex-1 pb-2 text-sm font-bold text-gray-400 border-b-2 border-transparent transition-colors">กำลังเล่น</button>
+                </div>
+                <div id="libraryView" class="block space-y-3 pb-safe"></div>
+                <div id="nowPlayingView" class="hidden flex-col h-full items-center pt-4">
+                    <div id="playerDisc" class="w-64 h-64 rounded-full bg-gray-900 shadow-2xl border-4 border-gray-800 flex items-center justify-center relative mb-8 transition-transform duration-300">
+                        <div class="absolute inset-0 rounded-full border-[12px] border-gray-800 opacity-20 pointer-events-none"></div>
+                        <div class="absolute inset-8 rounded-full border-2 border-gray-700 opacity-30 pointer-events-none"></div>
+                        <div class="absolute inset-16 rounded-full border-2 border-gray-700 opacity-30 pointer-events-none"></div>
+                        <div class="w-24 h-24 bg-gradient-to-tr from-pink-400 to-rose-500 rounded-full flex items-center justify-center relative z-10 shadow-inner overflow-hidden"><span class="text-white text-xs font-bold opacity-80">MUSIC</span></div>
+                        <div class="absolute w-3 h-3 bg-white rounded-full z-20"></div>
                     </div>
-                </div>
-                <div id="searchResults" class="space-y-2">
-                    <div class="text-center text-gray-400 mt-10"><div class="text-4xl mb-2 grayscale opacity-30">💿</div><p class="text-sm">พิมพ์ชื่อเพลงแล้วกดค้นหา</p></div>
-                </div>
-            </div>
-            <div id="nowPlayingView" class="hidden flex-col h-full">
-                <button onclick="backToSearch()" class="mb-4 text-xs font-bold text-gray-400 hover:text-pink-500 flex items-center gap-1 self-start">← กลับไปค้นหา</button>
-                <div class="w-full aspect-square bg-gray-100 rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.15)] mb-8 relative border-4 border-white">
-                    <div id="youtubeEmbedContainer" class="w-full h-full bg-black flex items-center justify-center pointer-events-none"><span class="text-white text-xs opacity-50">Loading...</span></div>
-                    <div class="absolute inset-0 bg-transparent z-10"></div>
-                </div>
-                <div class="text-center mb-8"><h2 id="playerSongTitle" class="text-2xl font-bold text-gray-800 truncate leading-tight">Song Name</h2><p class="text-pink-400 text-sm font-medium mt-1">YouTube Audio</p></div>
-                <div class="mt-auto">
-                    <div class="w-full bg-gray-100 h-1.5 rounded-full mb-8 overflow-hidden"><div class="bg-gradient-to-r from-pink-300 to-rose-400 h-full w-1/2 rounded-full relative"></div></div>
-                    <div class="flex items-center justify-center gap-8">
-                        <button class="text-gray-300 hover:text-gray-600 transition-colors p-2"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
-                        <button onclick="togglePlayState()" id="mainPlayBtn" class="w-20 h-20 bg-gradient-to-tr from-pink-400 to-rose-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-pink-200 transform hover:scale-105 active:scale-95 transition-all"><svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></button>
-                        <button class="text-gray-300 hover:text-gray-600 transition-colors p-2"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+                    <div class="text-center mb-8 w-full">
+                        <h2 id="playerSongTitle" class="text-2xl font-bold text-gray-800 truncate px-4">เลือกเพลงเพื่อเริ่มเล่น</h2>
+                        <p id="playerArtist" class="text-pink-400 text-sm font-medium mt-1">Chatroom Music</p>
+                    </div>
+                    <div class="w-full max-w-xs mt-auto">
+                        <div class="flex items-center gap-3 text-xs text-gray-400 font-mono mb-2"><span id="currTime">0:00</span><input type="range" id="progressBar" value="0" min="0" max="100" class="flex-grow h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"><span id="durTime">0:00</span></div>
+                        <div class="flex items-center justify-center gap-8 mt-6">
+                            <button onclick="prevTrack()" class="text-gray-300 hover:text-gray-600 transition-colors p-2"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+                            <button onclick="togglePlayState()" id="mainPlayBtn" class="w-20 h-20 bg-gradient-to-tr from-pink-400 to-rose-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-pink-200 transform hover:scale-105 active:scale-95 transition-all"><svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+                            <button onclick="nextTrack()" class="text-gray-300 hover:text-gray-600 transition-colors p-2"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Image Viewer -->
     <div id="imageViewerModal" class="hidden fixed inset-0 z-[100] bg-black flex flex-col justify-center items-center overflow-hidden transition-opacity duration-300 opacity-0 touch-none">
         <button onclick="closeImageViewer()" class="absolute top-4 right-4 text-white/70 hover:text-white text-4xl font-bold z-50 p-2 drop-shadow-md">&times;</button>
         <div class="relative w-full h-full flex items-center justify-center overflow-hidden" id="zoomContainer">
@@ -267,35 +286,21 @@
         <div class="absolute bottom-6 text-white/50 text-sm pointer-events-none bg-black/20 px-3 py-1 rounded-full backdrop-blur-sm">ใช้นิ้วขยาย/ย่อ หรือเลื่อนรูป</div>
     </div>
 
-    <!-- User List Modal -->
+    <!-- Modals -->
     <div id="userListModal" class="hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onclick="if(event.target===this) toggleUserList()">
         <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-white ring-1 ring-gray-100 scale-100">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-800">คนในห้อง</h3>
-                <button onclick="toggleUserList()" class="text-gray-400 hover:text-pink-500 text-lg font-bold">✕</button>
-            </div>
+            <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-bold text-gray-800">คนในห้อง</h3><button onclick="toggleUserList()" class="text-gray-400 hover:text-pink-500 text-lg font-bold">✕</button></div>
             <div id="userListContent" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
         </div>
     </div>
 
-    <!-- Room Info -->
     <div id="roomInfoModal" class="hidden fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onclick="if(event.target===this) closeModal('roomInfoModal')">
         <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-white ring-1 ring-gray-100">
-            <div class="flex justify-between items-start mb-4">
-                <div><h3 class="text-xl font-bold text-gray-800" id="infoModalRoomName">Room Name</h3><span class="text-xs px-2 py-0.5 rounded-md font-medium" id="infoModalType">Public</span></div>
-                <button onclick="closeModal('roomInfoModal')" class="text-gray-400 hover:text-red-500 text-lg">✕</button>
-            </div>
-            <div class="space-y-3">
-                <div class="p-3 bg-gray-50 rounded-xl">
-                    <div class="text-xs text-gray-400 mb-1">รหัสห้อง (Password)</div>
-                    <div class="flex items-center justify-between"><span id="infoModalPassword" class="font-mono text-gray-800 font-bold text-lg tracking-wider">---</span><button onclick="copyPassword()" class="text-blue-500 text-xs font-bold hover:underline bg-blue-50 px-2 py-1 rounded">คัดลอก</button></div>
-                    <div id="noPasswordText" class="text-sm text-gray-400 italic hidden">ห้องนี้ไม่มีรหัสผ่าน</div>
-                </div>
-            </div>
+            <div class="flex justify-between items-start mb-4"><div><h3 class="text-xl font-bold text-gray-800" id="infoModalRoomName">Room Name</h3><span class="text-xs px-2 py-0.5 rounded-md font-medium" id="infoModalType">Public</span></div><button onclick="closeModal('roomInfoModal')" class="text-gray-400 hover:text-red-500 text-lg">✕</button></div>
+            <div class="space-y-3"><div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-400 mb-1">รหัสห้อง (Password)</div><div class="flex items-center justify-between"><span id="infoModalPassword" class="font-mono text-gray-800 font-bold text-lg tracking-wider">---</span><button onclick="copyPassword()" class="text-blue-500 text-xs font-bold hover:underline bg-blue-50 px-2 py-1 rounded">คัดลอก</button></div><div id="noPasswordText" class="text-sm text-gray-400 italic hidden">ห้องนี้ไม่มีรหัสผ่าน</div></div></div>
         </div>
     </div>
 
-    <!-- Create Room -->
     <div id="createRoomModal" class="hidden fixed inset-0 bg-white/60 z-[60] flex items-center justify-center p-6 backdrop-blur-sm transition-all">
         <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl border border-white ring-1 ring-gray-100 scale-100 animate-slide-up">
             <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">สร้างห้องใหม่</h3>
@@ -322,192 +327,462 @@
     <div id="statusToast" class="fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full text-sm font-bold shadow-lg z-[100] text-white bg-gray-800 transition-all duration-300 opacity-0 -translate-y-10 pointer-events-none"></div>
 
     <script>
-        // --- Core State ---
-        let currentUser = '', currentRoom = null, messages = [], roomRegistry = {}, pendingJoinRoomName = '';
-        let isPlaying = false; 
-        let roomParticipants = []; 
-        let channel = null; // BroadcastChannel
+        // API Configuration
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyN2O8J4B4pGFt31h955kLF9U_m7hyCLqRTDpsanJzUZw8DyUR4mOwJaN7T0t7CgGYK/exec';
 
+        async function api(action, payload = {}) {
+            try {
+                // Using text/plain to avoid CORS preflight (OPTIONS)
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action, key: 'chat-v1', ...payload }) // Added key here
+                });
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                return await res.json();
+            } catch (e) {
+                console.warn("Server connection failed, switching to Local Mode:", e);
+                showToast('เข้าสู่โหมดออฟไลน์ (Local Mode)');
+                return await mockServer(action, payload);
+            }
+        }
+        
+        // Mock Server for offline/fallback
+        async function mockServer(action, p) {
+            await new Promise(r => setTimeout(r, 300));
+            if (action === 'getRooms') {
+                return JSON.parse(localStorage.getItem('mock_rooms') || '{"Lobby":{"type":"public","createdAt":0}}');
+            }
+            if (action === 'createRoom') {
+                const rooms = JSON.parse(localStorage.getItem('mock_rooms') || '{}');
+                if (rooms[p.name]) return { ok: false };
+                rooms[p.name] = { type: p.type, password: p.password, createdAt: Date.now() };
+                localStorage.setItem('mock_rooms', JSON.stringify(rooms));
+                return { ok: true };
+            }
+            if (action === 'getMessages') {
+                return JSON.parse(localStorage.getItem(`mock_msg_${p.room}`) || '[]');
+            }
+            if (action === 'addMessage') {
+                const msgs = JSON.parse(localStorage.getItem(`mock_msg_${p.room}`) || '[]');
+                msgs.push({
+                    id: Date.now(), user: p.user, text: p.text, file: p.file, fileName: p.fileName, fileType: p.fileType,
+                    timestamp: new Date().toISOString(), isSystem: false
+                });
+                if(msgs.length > 50) msgs.shift();
+                localStorage.setItem(`mock_msg_${p.room}`, JSON.stringify(msgs));
+                return { ok: true };
+            }
+            if (action === 'presence') {
+                const key = `mock_presence_${p.room}`;
+                let pres = JSON.parse(localStorage.getItem(key) || '{}');
+                pres[p.user] = Date.now();
+                const now = Date.now();
+                let active = [];
+                let newPres = {};
+                for(let u in pres) {
+                    if (now - pres[u] < 30000) { newPres[u] = pres[u]; active.push({ name: u }); }
+                }
+                localStorage.setItem(key, JSON.stringify(newPres));
+                return active;
+            }
+            return {};
+        }
+
+        // Core State
+        let currentUser = '', currentRoom = null, messages = [], roomRegistry = {}, pendingJoinRoomName = '';
+        let roomParticipants = []; 
+        let pollingInterval = null, presenceInterval = null;
+
+        // Music Player State
+        let playlist = []; // Empty initially
+        let currentTrackIndex = 0;
+        let isPlaying = false;
+        const audio = document.getElementById('audioPlayer');
+
+        // Init
         document.addEventListener('DOMContentLoaded', () => {
-            loadRegistry();
             if(localStorage.getItem('last_username')) document.getElementById('loginUsername').value = localStorage.getItem('last_username');
-            renderRoomList();
+            fetchRooms(); 
+            renderPlaylist(); 
             document.getElementById('messageInput').addEventListener('keypress', (e) => { if(e.key==='Enter') sendMessage(); });
             setupImageViewerGestures();
-            
-            // Listen for storage changes (Realtime message sync across tabs)
-            window.addEventListener('storage', (e) => {
-                if(e.key === `chat_msg_${currentRoom}`) {
-                    messages = JSON.parse(e.newValue || '[]');
-                    renderMessages();
-                }
-            });
-            
-            // Cleanup on close
-            window.addEventListener('beforeunload', () => {
-                if(channel) {
-                    channel.postMessage({ type: 'leave', user: currentUser });
-                    channel.close();
-                }
+
+            audio.addEventListener('timeupdate', updateProgress);
+            audio.addEventListener('ended', nextTrack);
+            document.getElementById('progressBar').addEventListener('input', (e) => {
+                const seekTime = (audio.duration / 100) * e.target.value;
+                audio.currentTime = seekTime;
             });
         });
 
-        // --- Realtime Connection (BroadcastChannel) ---
-        function setupRealtimeConnection(roomName) {
-            if(channel) channel.close();
-            channel = new BroadcastChannel(`chat_room_${roomName}`);
-            
-            // Initial self add
-            roomParticipants = [{ name: currentUser, isMe: true }];
-            updateOnlineCount();
-            
-            channel.onmessage = (event) => {
-                const data = event.data;
-                if (data.type === 'join') {
-                    // Someone joined, announce myself to them
-                    addParticipant(data.user);
-                    channel.postMessage({ type: 'presence', user: currentUser });
-                } else if (data.type === 'presence') {
-                    // Receive announcement from existing user
-                    addParticipant(data.user);
-                } else if (data.type === 'leave') {
-                    removeParticipant(data.user);
-                }
-            };
-            
-            // Announce join
-            channel.postMessage({ type: 'join', user: currentUser });
+        // Server Functions
+        async function fetchRooms() {
+            const rooms = await api('getRooms');
+            // If offline/error or data mismatch, fallback handled by api()
+            roomRegistry = rooms || {};
+            renderRoomList();
         }
 
-        function addParticipant(name) {
-            if (!roomParticipants.find(p => p.name === name)) {
-                roomParticipants.push({ name: name, isMe: false });
-                updateOnlineCount();
-                renderUserListModal();
-                // Optional: show toast
+        async function serverCreateRoom(name, type, pass) {
+            const r = await api('createRoom', { name, type, password: pass });
+            if (r.ok) {
+                closeModal('createRoomModal');
+                fetchRooms();
+                enterRoom(name);
+                showToast('สร้างห้องสำเร็จ!');
+            } else {
+                showToast('ชื่อห้องซ้ำ หรือเกิดข้อผิดพลาด');
             }
         }
 
-        function removeParticipant(name) {
-            roomParticipants = roomParticipants.filter(p => p.name !== name);
-            updateOnlineCount();
-            renderUserListModal();
+        async function serverLoadMessages(room) {
+            const msgs = await api('getMessages', { room });
+            if (Array.isArray(msgs) && msgs.length !== messages.length) {
+                messages = msgs;
+                renderMessages();
+            }
         }
 
-        function updateOnlineCount() {
-           document.getElementById('onlineCount').textContent = roomParticipants.length;
+        async function serverHeartbeat() {
+            const users = await api('presence', { room: currentRoom, user: currentUser });
+            if (Array.isArray(users)) {
+                roomParticipants = users.map(u => ({...u, isMe: u.name === currentUser}));
+                updateOnlineCount();
+                if(!document.getElementById('userListModal').classList.contains('hidden')) {
+                    renderUserListModal();
+                }
+            }
         }
 
+        // Music & Import
+        function handleMusicUpload(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                let addedCount = 0;
+                Array.from(files).forEach(file => {
+                    const objectUrl = URL.createObjectURL(file);
+                    playlist.push({
+                        title: file.name.replace(/\.[^/.]+$/, ""), 
+                        artist: "Local File",
+                        src: objectUrl,
+                        isLocal: true
+                    });
+                    addedCount++;
+                });
+                renderPlaylist();
+                showToast(`เพิ่ม ${addedCount} เพลงเรียบร้อย!`);
+                if(playlist.length > 0 && document.getElementById('libraryView').classList.contains('hidden')) {} else { showLibrary(); }
+            }
+            event.target.value = ''; 
+        }
+
+        function removeTrack(index) {
+            if (index === currentTrackIndex && isPlaying) {
+                audio.pause();
+                isPlaying = false;
+                updatePlayButtons();
+                document.getElementById('miniPlayer').classList.add('hidden');
+            }
+            if (index < currentTrackIndex) currentTrackIndex--;
+            else if (index === currentTrackIndex) currentTrackIndex = 0;
+
+            playlist.splice(index, 1);
+            renderPlaylist();
+            showToast('ลบเพลงเรียบร้อย');
+        }
+
+        function renderPlaylist() {
+            const list = document.getElementById('libraryView');
+            if (playlist.length === 0) {
+                list.innerHTML = '<div class="text-center text-gray-400 mt-10 text-sm">ยังไม่มีเพลง<br>กดปุ่ม + ด้านบนเพื่อเพิ่มเพลงจากเครื่อง</div>';
+                return;
+            }
+            list.innerHTML = playlist.map((song, index) => `
+                <div onclick="playTrack(${index})" class="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:border-pink-200 cursor-pointer transition-all group relative">
+                    <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 flex items-center justify-center text-lg ${song.isLocal ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}">
+                        ${song.isLocal ? '📂' : '🎵'}
+                    </div>
+                    <div class="flex-grow min-w-0">
+                        <div class="font-bold text-gray-700 text-sm truncate ${index===currentTrackIndex ? 'text-pink-500':''}">${song.title}</div>
+                        <div class="text-[10px] text-gray-400">${song.artist}</div>
+                    </div>
+                    <div class="text-gray-300 text-xs group-hover:hidden">▶</div>
+                    <button onclick="event.stopPropagation(); removeTrack(${index})" class="hidden group-hover:block text-red-400 hover:text-red-600 p-1.5 bg-white rounded-full shadow-sm hover:shadow-md transition-all">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function playTrack(index) {
+            if(playlist.length === 0) return;
+            currentTrackIndex = index;
+            const song = playlist[index];
+            audio.src = song.src;
+            audio.play().catch(e => { console.error("Playback error:", e); showToast("ไม่สามารถเล่นไฟล์นี้ได้"); });
+            isPlaying = true;
+            updatePlayerUI(song);
+            showNowPlaying();
+            document.getElementById('miniPlayer').classList.remove('hidden');
+        }
+
+        function updatePlayerUI(song) {
+            document.getElementById('playerSongTitle').textContent = song.title;
+            document.getElementById('playerArtist').textContent = song.artist;
+            document.getElementById('miniTitle').textContent = song.title;
+            document.getElementById('miniArtist').textContent = song.artist;
+            updatePlayButtons();
+        }
+
+        function togglePlayState() {
+            if (audio.paused) {
+                if(!audio.src && playlist.length > 0) playTrack(0);
+                else if (audio.src) audio.play();
+                isPlaying = true;
+            } else {
+                audio.pause();
+                isPlaying = false;
+            }
+            updatePlayButtons();
+        }
+
+        function updatePlayButtons() {
+            const mainBtn = document.getElementById('mainPlayBtn');
+            const miniBtn = document.getElementById('miniPlayIcon');
+            const miniArt = document.getElementById('miniArtContainer');
+            const mainDisc = document.getElementById('playerDisc');
+
+            if (isPlaying) {
+                mainBtn.innerHTML = `<svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+                miniBtn.textContent = '⏸';
+                miniArt.classList.add('disk-spin');
+                mainDisc.classList.add('disk-spin');
+            } else {
+                mainBtn.innerHTML = `<svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+                miniBtn.textContent = '▶';
+                miniArt.classList.remove('disk-spin');
+                mainDisc.classList.remove('disk-spin');
+            }
+        }
+
+        function nextTrack() {
+            if(playlist.length === 0) return;
+            let nextIndex = currentTrackIndex + 1;
+            if (nextIndex >= playlist.length) nextIndex = 0;
+            playTrack(nextIndex);
+        }
+
+        function prevTrack() {
+            if(playlist.length === 0) return;
+            let prevIndex = currentTrackIndex - 1;
+            if (prevIndex < 0) prevIndex = playlist.length - 1;
+            playTrack(prevIndex);
+        }
+
+        function updateProgress() {
+            const progress = document.getElementById('progressBar');
+            const currTime = document.getElementById('currTime');
+            const durTime = document.getElementById('durTime');
+            if(isNaN(audio.duration)) return;
+            const percent = (audio.currentTime / audio.duration) * 100;
+            progress.value = percent;
+            currTime.textContent = formatTime(audio.currentTime);
+            durTime.textContent = formatTime(audio.duration);
+        }
+
+        function formatTime(s) {
+            const mins = Math.floor(s / 60);
+            const secs = Math.floor(s % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function showLibrary() {
+            document.getElementById('libraryView').classList.remove('hidden');
+            document.getElementById('nowPlayingView').classList.add('hidden');
+            document.getElementById('nowPlayingView').classList.remove('flex');
+            document.getElementById('tabLibrary').classList.replace('border-transparent', 'border-pink-500');
+            document.getElementById('tabLibrary').classList.replace('text-gray-400', 'text-pink-500');
+            document.getElementById('tabNowPlaying').classList.replace('border-pink-500', 'border-transparent');
+            document.getElementById('tabNowPlaying').classList.replace('text-pink-500', 'text-gray-400');
+        }
+
+        function showNowPlaying() {
+            document.getElementById('libraryView').classList.add('hidden');
+            document.getElementById('nowPlayingView').classList.remove('hidden');
+            document.getElementById('nowPlayingView').classList.add('flex');
+            document.getElementById('tabNowPlaying').classList.replace('border-transparent', 'border-pink-500');
+            document.getElementById('tabNowPlaying').classList.replace('text-gray-400', 'text-pink-500');
+            document.getElementById('tabLibrary').classList.replace('border-pink-500', 'border-transparent');
+            document.getElementById('tabLibrary').classList.replace('text-pink-500', 'text-gray-400');
+        }
+
+        // --- App & Room Logic ---
+        function renderRoomList() {
+            const c = document.getElementById('roomListContainer'); c.innerHTML = '';
+            
+            // Handle both Array (API) and Object (Local Mock) formats
+            let roomsArray = [];
+            if (Array.isArray(roomRegistry)) {
+                roomsArray = roomRegistry;
+            } else if (roomRegistry && typeof roomRegistry === 'object') {
+                roomsArray = Object.entries(roomRegistry).map(([k, v]) => ({name: k, ...v}));
+            }
+
+            if(roomsArray.length === 0) {
+                c.innerHTML = '<div class="text-center text-white/50 text-xs mt-4">ยังไม่มีห้อง (สร้างเลย!)</div>';
+                return;
+            }
+
+            roomsArray.forEach(data => {
+                const isPrivate = data.type === 'private';
+                const d = document.createElement('div');
+                d.className = "flex items-center justify-between p-4 bg-white/70 backdrop-blur-sm rounded-2xl border border-white shadow-sm hover:shadow-md transition-all cursor-pointer group mb-2";
+                d.onclick = () => attemptJoinRoom(data.name, data.type);
+                d.innerHTML = `<div class="flex items-center gap-4"><div class="w-12 h-12 ${isPrivate?'bg-orange-100 text-orange-400':'bg-blue-100 text-blue-400'} rounded-2xl flex items-center justify-center font-bold text-xl shadow-inner">${isPrivate?'🔒':'#'}</div><div><div class="font-bold text-base text-gray-700">${data.name}</div><div class="text-[10px] text-gray-400 font-medium uppercase tracking-wide bg-white px-2 py-0.5 rounded-md inline-block mt-1 shadow-sm border border-gray-100">${isPrivate?'Private':'Public'}</div></div></div><div class="text-gray-300">➜</div>`;
+                c.appendChild(d);
+            });
+        }
+        
+        function attemptJoinRoom(name, type) {
+            const user = document.getElementById('loginUsername').value.trim();
+            if(!user) { showToast('กรุณาใส่ชื่อของคุณ'); return; }
+            if(type === 'private') { pendingJoinRoomName = name; document.getElementById('promptRoomName').textContent = name; document.getElementById('passwordPromptModal').classList.remove('hidden'); } else { enterRoom(name); }
+        }
+        
+        function enterRoom(name) {
+            currentUser = document.getElementById('loginUsername').value.trim(); 
+            localStorage.setItem('last_username', currentUser); 
+            currentRoom = name;
+            
+            messages = [];
+            renderMessages(); 
+            serverLoadMessages(name);
+            pollingInterval = setInterval(() => serverLoadMessages(currentRoom), 5000);
+            presenceInterval = setInterval(serverHeartbeat, 10000);
+            serverHeartbeat(); // First beat
+
+            document.getElementById('lobbyScreen').classList.add('hidden'); 
+            document.getElementById('chatApp').classList.remove('hidden'); 
+            document.getElementById('chatApp').classList.add('flex');
+            document.getElementById('displayRoomName').textContent = name; 
+            document.getElementById('displayUsername').textContent = currentUser;
+            
+            // Determine type for lock icon
+            let isPrivate = false;
+            // Check in array or object
+            if (Array.isArray(roomRegistry)) {
+                const r = roomRegistry.find(r => r.name === name);
+                if (r && r.type === 'private') isPrivate = true;
+            } else if (roomRegistry[name] && roomRegistry[name].type === 'private') {
+                isPrivate = true;
+            }
+            document.getElementById('roomLockIcon').classList[isPrivate?'remove':'add']('hidden');
+        }
+        
+        function leaveRoom() {
+            clearInterval(pollingInterval);
+            clearInterval(presenceInterval);
+            document.getElementById('chatApp').classList.remove('flex'); 
+            document.getElementById('chatApp').classList.add('hidden');
+            document.getElementById('lobbyScreen').classList.remove('hidden'); 
+            currentRoom = null;
+            closeMediaPlayer(); 
+        }
+        
+        function renderMessages() {
+            const c = document.getElementById('chatMessages');
+            c.innerHTML = messages.map(m => {
+                if(m.isSystem) return `<div class="flex justify-center my-3"><span class="text-[10px] text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm">${m.text}</span></div>`;
+                const isMe = m.user === currentUser;
+                return `<div class="flex ${isMe?'justify-end':'justify-start'} mb-4 animate-slide-up"><div class="max-w-[75%] flex flex-col ${isMe?'items-end':'items-start'}">${!isMe?`<div class="text-[10px] text-gray-400 mb-1 ml-1">${m.user}</div>`:''} <div class="${isMe?'bg-gradient-to-tr from-pink-500 to-rose-400 text-white shadow-pink-200':'bg-white text-gray-700 border border-gray-100'} px-4 py-2.5 rounded-2xl ${isMe?'rounded-br-sm':'rounded-bl-sm'} text-sm shadow-md">${m.text||''} ${m.file?renderAttachment(m):''}</div></div></div>`;
+            }).join('');
+            c.scrollTop = c.scrollHeight;
+        }
+        
+        function renderAttachment(m) { 
+            if (!m.file) return '';
+            const isImg = (typeof m.file === 'string') && (m.file.startsWith('data:image') || m.file.match(/\.(jpeg|jpg|gif|png)$/) != null);
+            if(isImg) return `<img src="${m.file}" class="mt-2 rounded-xl max-h-48 w-full object-cover border-2 border-white/50 shadow-sm cursor-pointer" onclick="openImageViewer('${m.file}')">`; 
+            return `<div class="mt-1 flex items-center gap-2 text-xs bg-white/20 p-2 rounded-lg">📎 <span>${m.fileName || 'File'}</span></div>`; 
+        }
+        
+        async function sendMessage() {
+            const txt = document.getElementById('messageInput').value.trim();
+            const fileInput = document.getElementById('fileInput'); // Use local var to avoid global scope confusion
+            const file = fileInput.files[0];
+            
+            if (!txt && !file) return;
+
+            // Check file size
+            if (file && file.size > 300 * 1024) {
+                 showToast('ไฟล์ใหญ่เกิน 300KB');
+                 return;
+            }
+
+            let fData = null, fName = null, fType = null;
+            if (file) {
+                fData = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); });
+                fName = file.name; fType = file.type;
+            }
+            await api('addMessage', { room: currentRoom, user: currentUser, text: txt, file: fData, fileName: fName, fileType: fType });
+            document.getElementById('messageInput').value = '';
+            clearFile();
+            serverLoadMessages(currentRoom);
+        }
+
+        // Utils
+        function toggleUserList() { const m = document.getElementById('userListModal'); if(m.classList.contains('hidden')) { renderUserListModal(); m.classList.remove('hidden'); } else m.classList.add('hidden'); }
+        function updateOnlineCount() { const el=document.getElementById('onlineCount'); if(el) el.textContent=roomParticipants.length; }
+        
         function renderUserListModal() {
             const c = document.getElementById('userListContent');
+            if(!c) return;
+            
+            if(roomParticipants.length === 0) {
+                c.innerHTML = '<div class="text-center text-gray-400 py-4 text-sm">กำลังโหลด...</div>';
+                return;
+            }
+            
             c.innerHTML = roomParticipants.map(u => `
                 <div class="flex items-center justify-between p-2 bg-gray-50 rounded-xl">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br ${u.isMe?'from-pink-400 to-rose-400':'from-blue-300 to-indigo-300'} flex items-center justify-center text-white text-xs font-bold shadow-sm">${u.name.charAt(0).toUpperCase()}</div>
-                        <div class="text-sm text-gray-700 font-medium">${u.name} ${u.isMe?'(คุณ)':''}</div>
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br ${u.isMe?'from-pink-400 to-rose-400':'from-blue-300 to-indigo-300'} flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                            ${u.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div class="text-sm text-gray-700 font-medium">
+                            ${u.name} ${u.isMe?'(คุณ)':''}
+                        </div>
                     </div>
                     <div class="w-2 h-2 rounded-full bg-green-400 shadow-sm animate-pulse"></div>
                 </div>
             `).join('');
         }
 
-        // --- Standard Logic ---
-        function loadRegistry() { const s = localStorage.getItem('chat_room_registry'); roomRegistry = s ? JSON.parse(s) : {"Lobby": {type:'public', createdAt:Date.now()}}; }
-        function saveRegistry() { localStorage.setItem('chat_room_registry', JSON.stringify(roomRegistry)); }
+        function showRoomInfo() { 
+             let r = null; 
+             if(Array.isArray(roomRegistry)) r = roomRegistry.find(item => item.name === currentRoom); 
+             else r = roomRegistry[currentRoom];
+             
+             document.getElementById('infoModalRoomName').textContent = currentRoom; 
+             const tb = document.getElementById('infoModalType'); 
+             
+             if(r && r.type === 'private'){ 
+                 tb.textContent='Private'; 
+                 tb.className='text-xs px-2 py-0.5 rounded-md font-medium bg-orange-100 text-orange-500'; 
+                 // Note: In real app, password shouldn't be exposed like this if not admin
+                 document.getElementById('infoModalPassword').textContent = r.password || '******'; 
+                 document.getElementById('infoModalPassword').parentElement.parentElement.classList.remove('hidden'); 
+             } else { 
+                 tb.textContent='Public'; 
+                 tb.className='text-xs px-2 py-0.5 rounded-md font-medium bg-blue-100 text-blue-500'; 
+                 document.getElementById('infoModalPassword').parentElement.parentElement.classList.add('hidden'); 
+             } 
+             document.getElementById('roomInfoModal').classList.remove('hidden'); 
+        }
         
-        function renderRoomList() {
-            const c = document.getElementById('roomListContainer'); c.innerHTML = '';
-            Object.entries(roomRegistry).forEach(([name, data]) => {
-                const isPrivate = data.type === 'private';
-                const d = document.createElement('div');
-                d.className = "flex items-center justify-between p-4 bg-white/70 backdrop-blur-sm rounded-2xl border border-white shadow-sm hover:shadow-md transition-all cursor-pointer group mb-2";
-                d.onclick = () => attemptJoinRoom(name);
-                d.innerHTML = `<div class="flex items-center gap-4"><div class="w-12 h-12 ${isPrivate?'bg-orange-100 text-orange-400':'bg-blue-100 text-blue-400'} rounded-2xl flex items-center justify-center font-bold text-xl shadow-inner">${isPrivate?'🔒':'#'}</div><div><div class="font-bold text-base text-gray-700">${name}</div><div class="text-[10px] text-gray-400 font-medium uppercase tracking-wide bg-white px-2 py-0.5 rounded-md inline-block mt-1 shadow-sm border border-gray-100">${isPrivate?'Private':'Public'}</div></div></div><div class="text-gray-300">➜</div>`;
-                c.appendChild(d);
-            });
-        }
-
-        function attemptJoinRoom(name) {
-            const user = document.getElementById('loginUsername').value.trim();
-            if(!user) { showToast('กรุณาใส่ชื่อของคุณ'); return; }
-            if(!roomRegistry[name]) { if(confirm('สร้างห้องใหม่?')) { roomRegistry[name]={type:'public'}; saveRegistry(); } else return; }
-            if(roomRegistry[name].type === 'private') {
-                pendingJoinRoomName = name;
-                document.getElementById('promptRoomName').textContent = name;
-                document.getElementById('passwordPromptModal').classList.remove('hidden');
-            } else enterRoom(name);
-        }
-
-        function enterRoom(name) {
-            currentUser = document.getElementById('loginUsername').value.trim();
-            localStorage.setItem('last_username', currentUser);
-            currentRoom = name;
-            
-            // Connect Realtime
-            setupRealtimeConnection(name);
-
-            document.getElementById('lobbyScreen').classList.add('hidden');
-            document.getElementById('chatApp').classList.remove('hidden');
-            document.getElementById('chatApp').classList.add('flex');
-            document.getElementById('displayRoomName').textContent = name;
-            document.getElementById('displayUsername').textContent = currentUser;
-            document.getElementById(roomRegistry[name].type==='private'?'roomLockIcon':'roomLockIcon').classList[roomRegistry[name].type==='private'?'remove':'add']('hidden');
-            loadMessages();
-        }
-
-        function leaveRoom() {
-            if(channel) {
-                channel.postMessage({ type: 'leave', user: currentUser });
-                channel.close();
-                channel = null;
-            }
-            document.getElementById('chatApp').classList.remove('flex');
-            document.getElementById('chatApp').classList.add('hidden');
-            document.getElementById('lobbyScreen').classList.remove('hidden');
-            currentRoom = null;
-            closeMediaPlayer();
-        }
-
-        function loadMessages() {
-            messages = JSON.parse(localStorage.getItem(`chat_msg_${currentRoom}`) || '[]');
-            if(messages.length===0) messages.push({id:Date.now(), text:`ยินดีต้อนรับสู่ ${currentRoom}`, sys:true});
-            renderMessages();
-        }
-        function renderMessages() {
-            const c = document.getElementById('chatMessages');
-            c.innerHTML = messages.map(m => {
-                if(m.sys) return `<div class="flex justify-center my-3"><span class="text-[10px] text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm">${m.text}</span></div>`;
-                const isMe = m.user === currentUser;
-                return `<div class="flex ${isMe?'justify-end':'justify-start'} mb-4 animate-slide-up"><div class="max-w-[75%] flex flex-col ${isMe?'items-end':'items-start'}">${!isMe?`<div class="text-[10px] text-gray-400 mb-1 ml-1">${m.user}</div>`:''} <div class="${isMe?'bg-gradient-to-tr from-pink-500 to-rose-400 text-white shadow-pink-200':'bg-white text-gray-700 border border-gray-100'} px-4 py-2.5 rounded-2xl ${isMe?'rounded-br-sm':'rounded-bl-sm'} text-sm shadow-md">${m.text||''} ${m.file?renderAttachment(m):''}</div></div></div>`;
-            }).join('');
-            c.scrollTop = c.scrollHeight;
-        }
-        function renderAttachment(m) {
-            if(m.fileType && m.fileType.startsWith('image/')) return `<img src="${m.file}" class="mt-2 rounded-xl max-h-48 w-full object-cover border-2 border-white/50 shadow-sm cursor-pointer" onclick="openImageViewer('${m.file}')">`;
-            return `<div class="mt-1 flex items-center gap-2 text-xs bg-white/20 p-2 rounded-lg">📎 <span>${m.fileName}</span></div>`;
-        }
-        async function sendMessage() {
-            const txt = document.getElementById('messageInput').value.trim();
-            const file = document.getElementById('fileInput').files[0];
-            if(!txt && !file) return;
-            let fData=null, fName=null, fType=null;
-            if(file) { fData = await new Promise(r=>{const rd=new FileReader();rd.onload=e=>r(e.target.result);rd.readAsDataURL(file)}); fName=file.name; fType=file.type; }
-            messages.push({id:Date.now(), user:currentUser, text:txt, file:fData, fileName:fName, fileType:fType, sys:false});
-            localStorage.setItem(`chat_msg_${currentRoom}`, JSON.stringify(messages));
-            renderMessages();
-            document.getElementById('messageInput').value='';
-            clearFile();
-        }
-
-        // Utils (Toggle, Modals, etc.)
-        function toggleUserList() { const m = document.getElementById('userListModal'); if(m.classList.contains('hidden')) { renderUserListModal(); m.classList.remove('hidden'); } else m.classList.add('hidden'); }
-        function showRoomInfo() { const r=roomRegistry[currentRoom]; document.getElementById('infoModalRoomName').textContent=currentRoom; const tb=document.getElementById('infoModalType'); if(r.type==='private'){ tb.textContent='Private'; tb.className='text-xs px-2 py-0.5 rounded-md font-medium bg-orange-100 text-orange-500'; document.getElementById('infoModalPassword').textContent=r.password; document.getElementById('infoModalPassword').parentElement.parentElement.classList.remove('hidden'); } else { tb.textContent='Public'; tb.className='text-xs px-2 py-0.5 rounded-md font-medium bg-blue-100 text-blue-500'; document.getElementById('infoModalPassword').parentElement.parentElement.classList.add('hidden'); } document.getElementById('roomInfoModal').classList.remove('hidden'); }
         function copyPassword() { const t=document.createElement('textarea'); t.value=document.getElementById('infoModalPassword').textContent; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); showToast('คัดลอกรหัสแล้ว'); }
-        
-        // ... (Player & Image Viewer functions remain the same as previous) ...
         function toggleEmoji() { const p = document.getElementById('emojiPanel'); p.classList.toggle('hidden'); }
         function addEmoji(e) { const i = document.getElementById('messageInput'); i.value += e; i.focus(); }
-        function openMediaPlayer() { document.getElementById('mediaPlayerModal').classList.remove('hidden'); }
+        function openMediaPlayer() { document.getElementById('mediaPlayerModal').classList.remove('hidden'); showLibrary(); }
         function closeMediaPlayer() { document.getElementById('mediaPlayerModal').classList.add('hidden'); }
         function handleFileSelect(e) { if(e.target.files[0]) { document.getElementById('previewContainer').classList.remove('hidden'); document.getElementById('filePreviewBadge').classList.remove('hidden'); document.getElementById('filePreviewBadge').classList.add('flex'); document.getElementById('fileName').textContent=e.target.files[0].name; } }
         function clearFile() { document.getElementById('fileInput').value=''; document.getElementById('previewContainer').classList.add('hidden'); }
@@ -521,38 +796,18 @@
         }
         function confirmCreateRoom() {
             const n=document.getElementById('newRoomName').value.trim(), t=document.querySelector('input[name="roomType"]:checked').value, p=document.getElementById('newRoomPassword').value.trim();
-            if(!n){showToast('ระบุชื่อห้อง');return;} if(t==='private'&&!p){showToast('ระบุรหัสผ่าน');return;} if(roomRegistry[n]){showToast('ชื่อซ้ำ');return;}
-            roomRegistry[n]={type:t,password:p}; saveRegistry(); closeModal('createRoomModal'); renderRoomList(); enterRoom(n);
+            if(!n){showToast('ระบุชื่อห้อง');return;} if(t==='private'&&!p){showToast('ระบุรหัสผ่าน');return;} 
+            serverCreateRoom(n, t, p);
         }
-        function quickJoin(){ const n=document.getElementById('quickJoinRoomName').value; if(n) attemptJoinRoom(n); }
-        function submitPassword(){ if(document.getElementById('promptPassword').value===roomRegistry[pendingJoinRoomName].password){closeModal('passwordPromptModal');enterRoom(pendingJoinRoomName);}else showToast('รหัสผ่านผิด'); }
+        function quickJoin(){ const n=document.getElementById('quickJoinRoomName').value; if(n) attemptJoinRoom(n, 'public'); }
+        function submitPassword(){ 
+            let r = null; 
+            if(Array.isArray(roomRegistry)) r = roomRegistry.find(i => i.name === pendingJoinRoomName); 
+            else r = roomRegistry[pendingJoinRoomName];
+            
+            if(r && document.getElementById('promptPassword').value === r.password){ closeModal('passwordPromptModal'); enterRoom(pendingJoinRoomName); } else { showToast('รหัสผ่านผิด'); } 
+        }
         function showToast(m){ const t=document.getElementById('statusToast'); t.textContent=m; t.classList.remove('opacity-0','-translate-y-10'); setTimeout(()=>t.classList.add('opacity-0','-translate-y-10'),2000); }
-        
-        // Player & Image Viewer (Compacted)
-        function performSearch() {
-            const q = document.getElementById('youtubeInput').value.trim(); if(!q) return;
-            const rc = document.getElementById('searchResults'); rc.innerHTML = ''; 
-            [{title:q, desc:"Top Result"}, {title:`${q} (Audio)`, desc:"Audio"}].forEach(i => {
-                const d = document.createElement('div'); d.className = "flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 hover:border-pink-200 cursor-pointer";
-                d.onclick = () => loadTrack(i.title); d.innerHTML = `<div class="flex items-center gap-3"><div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-lg">🎵</div><div><div class="font-bold text-gray-700 text-sm">${i.title}</div><div class="text-[10px] text-gray-400">${i.desc}</div></div></div>`;
-                rc.appendChild(d);
-            });
-        }
-        function loadTrack(t) {
-            document.getElementById('searchView').classList.add('hidden'); document.getElementById('nowPlayingView').classList.remove('hidden'); document.getElementById('nowPlayingView').classList.add('flex');
-            document.getElementById('playerSongTitle').textContent = t; document.getElementById('miniTitle').textContent = t;
-            const u = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(t)}&autoplay=1&controls=0&enablejsapi=1&origin=${window.location.origin}`;
-            document.getElementById('youtubeEmbedContainer').innerHTML = `<iframe id="ytIframe" width="100%" height="100%" src="${u}" frameborder="0" style="pointer-events: none;"></iframe>`;
-            isPlaying = true; updatePlayButton(); document.getElementById('miniPlayer').classList.remove('hidden');
-        }
-        function backToSearch() { document.getElementById('nowPlayingView').classList.add('hidden'); document.getElementById('nowPlayingView').classList.remove('flex'); document.getElementById('searchView').classList.remove('hidden'); }
-        function togglePlayState() { const f = document.getElementById('ytIframe'); if(f) { f.contentWindow.postMessage(`{"event":"command","func":"${isPlaying?'pause':'play'}Video","args":""}`, '*'); isPlaying = !isPlaying; updatePlayButton(); } }
-        function updatePlayButton() { 
-            const m = document.getElementById('mainPlayBtn'), mi = document.getElementById('miniPlayIcon');
-            if(isPlaying) { m.innerHTML = `<svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`; mi.textContent='⏸'; document.getElementById('miniArtContainer').classList.remove('paused'); }
-            else { m.innerHTML = `<svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`; mi.textContent='▶'; document.getElementById('miniArtContainer').classList.add('paused'); }
-        }
-        function stopMedia() { document.getElementById('youtubeEmbedContainer').innerHTML = ''; document.getElementById('miniPlayer').classList.add('hidden'); isPlaying = false; backToSearch(); }
         
         let scale=1, pX=0, pY=0, sX=0, sY=0, imgEl=null, panning=false;
         function openImageViewer(s) { const m=document.getElementById('imageViewerModal'); imgEl=document.getElementById('viewerImage'); imgEl.src=s; scale=1; pX=0; pY=0; setTr(); m.classList.remove('hidden'); setTimeout(()=>m.classList.remove('opacity-0'),10); }
