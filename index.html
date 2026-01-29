@@ -240,6 +240,9 @@
             </div>
         </div>
     </div>
+    
+    <!-- Audio Element (Static HTML) -->
+    <audio id="mainAudio" controls class="hidden"></audio>
 
     <!-- Scripts -->
     <script>
@@ -271,13 +274,10 @@
             { title: "Radio Thailand", artist: "NBT", src: "https://nbt1.prd.go.th/live/fm925.m3u8" }
         ];
 
-        // 2️⃣ ปรับการตั้งค่า audio + appendChild (เพื่อให้ Browser ยอมรับ)
-        const audio = document.createElement("audio");
-        audio.controls = false;
+        // 2️⃣ ปรับการตั้งค่า audio (ใช้ Element จาก HTML)
+        const audio = document.getElementById("mainAudio");
         audio.preload = "auto";
         audio.crossOrigin = "anonymous";
-        document.body.appendChild(audio); // 🔥 สำคัญมากสำหรับ Mobile
-        audio.style.display = "none";
         
         let hls = null;
 
