@@ -1,1 +1,675 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chatroom (Cute Edition)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                    },
+                    colors: {
+                        cute: {
+                            pink: '#FF9A9E',
+                            rose: '#FECFEF',
+                            purple: '#A18CD1',
+                            blue: '#FBC2EB',
+                            text: '#555555',
+                            dark: '#4A4A4A'
+                        }
+                    },
+                    animation: {
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'bounce-slow': 'bounce 3s infinite',
+                        'spin-slow': 'spin 8s linear infinite',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { transform: 'translateY(100%)' },
+                            '100%': { transform: 'translateY(0)' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%);
+            color: #4a4a4a;
+            -webkit-tap-highlight-color: transparent;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 40px 0 rgba(31, 38, 135, 0.1);
+        }
+        .cute-gradient-text {
+            background: -webkit-linear-gradient(45deg, #FF9A9E, #A18CD1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        /* Player specific styles */
+        .disk-spin { animation: spin 10s linear infinite; }
+        .paused { animation-play-state: paused; }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden">
 
+    <!-- ==================== LOBBY SCREEN ==================== -->
+    <div id="lobbyScreen" class="flex-grow flex flex-col p-6 animate-fade-in max-w-md mx-auto w-full justify-center">
+        <div class="text-center mb-10">
+            <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl animate-bounce-slow border-4 border-white">
+                <span class="text-5xl">💬</span>
+            </div>
+            <h1 class="text-4xl font-bold tracking-tight cute-gradient-text drop-shadow-sm">Chatroom</h1>
+            <p class="text-white font-medium text-sm mt-2 opacity-90">คอมมูนิตี้เพลงและแชท</p>
+        </div>
+
+        <div class="glass-card rounded-3xl p-6 space-y-5 shadow-xl">
+            <div class="space-y-1">
+                <label class="text-xs text-gray-500 ml-1 uppercase font-bold tracking-wider">ชื่อของคุณ</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
+                    <input type="text" id="loginUsername" placeholder="ตั้งชื่อเล่น..." 
+                        class="w-full bg-white text-gray-700 pl-10 pr-4 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-pink-300 border border-gray-100 transition-all text-sm placeholder-gray-400 shadow-inner">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="openCreateRoomModal()" class="bg-gradient-to-r from-pink-400 to-rose-400 hover:from-pink-500 hover:to-rose-500 text-white py-4 rounded-2xl font-bold text-sm shadow-md flex flex-col items-center gap-1 transition-all active:scale-95 transform hover:-translate-y-1">
+                    <span class="text-2xl bg-white/20 w-8 h-8 rounded-full flex items-center justify-center mb-1">+</span>
+                    สร้างห้อง
+                </button>
+                <button onclick="document.getElementById('quickJoinRoomName').focus()" class="bg-white hover:bg-gray-50 text-gray-700 py-4 rounded-2xl font-bold text-sm shadow-md border border-gray-100 flex flex-col items-center gap-1 transition-all active:scale-95 transform hover:-translate-y-1">
+                    <span class="text-2xl bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center mb-1 text-gray-500">➜</span>
+                    เข้าห้อง
+                </button>
+            </div>
+
+            <div class="relative pt-2">
+                <input type="text" id="quickJoinRoomName" placeholder="ใส่ชื่อห้องเพื่อเข้าร่วม..." 
+                    class="w-full bg-transparent border-b-2 border-gray-200 text-gray-600 px-2 py-3 outline-none focus:border-pink-400 transition-all text-center text-sm font-medium placeholder-gray-400">
+                <button onclick="quickJoin()" class="absolute right-0 top-5 text-pink-400 hover:text-pink-600 font-bold text-xs bg-pink-50 px-2 py-1 rounded-lg">
+                    เข้าร่วม
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 flex-grow overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center mb-3 px-2">
+                <span class="text-xs text-white font-bold uppercase drop-shadow-md">ห้องทั้งหมด</span>
+                <button onclick="renderRoomList()" class="text-xs text-white bg-white/20 px-2 py-1 rounded-full hover:bg-white/40 transition-all">รีเฟรช ↺</button>
+            </div>
+            <div id="roomListContainer" class="flex-grow overflow-y-auto space-y-2 pr-1 hide-scroll pb-4"></div>
+        </div>
+    </div>
+
+    <!-- ==================== CHAT SCREEN ==================== -->
+    <div id="chatApp" class="hidden h-full flex-col relative bg-white w-full max-w-lg mx-auto shadow-2xl">
+        <!-- Navbar -->
+        <div class="h-16 flex items-center justify-between px-4 bg-white/80 backdrop-blur-md border-b border-gray-100 z-20 shadow-sm sticky top-0">
+            <div class="flex items-center gap-3">
+                <button onclick="leaveRoom()" class="text-gray-500 hover:text-pink-500 p-2 bg-gray-100 rounded-full transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <button onclick="showRoomInfo()" class="leading-tight text-left hover:bg-gray-50 rounded-lg p-1 transition-colors group">
+                    <div class="flex items-center gap-2">
+                        <div id="displayRoomName" class="font-bold text-gray-800 text-base truncate max-w-[150px]">Room Name</div>
+                        <span id="roomLockIcon" class="hidden text-[10px] bg-orange-100 text-orange-500 px-1.5 rounded-md">🔒</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-300 group-hover:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="text-[11px] text-gray-400 flex items-center gap-1 font-medium">
+                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        <span id="displayUsername">User</span>
+                    </div>
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openMediaPlayer()" class="text-pink-500 p-2 bg-pink-50 hover:bg-pink-100 rounded-full transition-colors border border-pink-100 shadow-sm animate-pulse-fast">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                </button>
+                <button onclick="toggleUserList()" class="text-blue-500 p-2 bg-blue-50 hover:bg-blue-100 rounded-full transition-colors border border-blue-100 shadow-sm relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    <span id="onlineCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border-2 border-white font-bold">1</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="chatMessages" class="flex-grow overflow-y-auto p-4 space-y-4 scroll-smooth pb-32 bg-slate-50"></div>
+
+        <!-- Mini Player -->
+        <div id="miniPlayer" class="hidden absolute bottom-[80px] left-3 right-3 bg-white/95 backdrop-blur-md rounded-2xl p-2 flex items-center justify-between shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-20 border border-pink-100 ring-1 ring-pink-50 cursor-pointer" onclick="openMediaPlayer()">
+            <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-xs text-pink-500 flex-shrink-0 shadow-inner overflow-hidden border-2 border-white animate-spin-slow" id="miniArtContainer">
+                    <img id="miniThumb" src="" class="w-full h-full object-cover hidden">
+                    <span id="miniIcon">🎵</span>
+                </div>
+                <div class="flex-grow min-w-0">
+                    <div id="miniTitle" class="text-xs font-bold text-gray-800 truncate">Song Title</div>
+                    <div class="text-[10px] text-pink-500 truncate font-medium">YouTube Music</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-1 pr-2">
+                <button onclick="event.stopPropagation(); togglePlayState()" class="w-8 h-8 flex items-center justify-center bg-pink-100 text-pink-500 rounded-full hover:bg-pink-200 transition-colors">
+                    <span id="miniPlayIcon">⏸</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Input -->
+        <div class="absolute bottom-0 w-full bg-white border-t border-gray-100 p-3 z-30 pb-safe">
+            
+            <!-- Emoji Panel -->
+            <div id="emojiPanel" class="hidden mb-2 bg-white rounded-2xl shadow-lg border border-pink-100 p-3 grid grid-cols-8 gap-2 overflow-y-auto max-h-40 animate-slide-up">
+                <button onclick="addEmoji('😀')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">😀</button>
+                <button onclick="addEmoji('😂')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">😂</button>
+                <button onclick="addEmoji('🥰')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">🥰</button>
+                <button onclick="addEmoji('🥺')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">🥺</button>
+                <button onclick="addEmoji('😎')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">😎</button>
+                <button onclick="addEmoji('😭')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">😭</button>
+                <button onclick="addEmoji('😡')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">😡</button>
+                <button onclick="addEmoji('👍')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">👍</button>
+                <button onclick="addEmoji('❤️')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">❤️</button>
+                <button onclick="addEmoji('🎉')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">🎉</button>
+                <button onclick="addEmoji('🔥')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">🔥</button>
+                <button onclick="addEmoji('✨')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">✨</button>
+                <button onclick="addEmoji('🙏')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">🙏</button>
+                <button onclick="addEmoji('👀')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">👀</button>
+                <button onclick="addEmoji('💯')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">💯</button>
+                <button onclick="addEmoji('🤔')" class="hover:bg-pink-50 p-1 rounded text-xl transition-colors">🤔</button>
+            </div>
+
+            <!-- Preview Badges -->
+            <div id="previewContainer" class="hidden flex gap-2 mb-2 px-1">
+                <div id="filePreviewBadge" class="hidden bg-blue-50 text-blue-600 text-xs px-3 py-1.5 rounded-full flex items-center gap-2 border border-blue-100 font-medium">
+                    <span class="text-lg">📎</span> <span id="fileName" class="truncate max-w-[150px]">File</span> 
+                    <button onclick="clearFile()" class="ml-2 text-blue-300 hover:text-blue-600 bg-white rounded-full w-4 h-4 flex items-center justify-center">✕</button>
+                </div>
+            </div>
+
+            <!-- Main Input -->
+            <div class="flex items-end gap-2 bg-gray-50 p-1.5 rounded-3xl border border-gray-200 focus-within:border-pink-300 focus-within:ring-2 focus-within:ring-pink-100 transition-all shadow-sm">
+                <button onclick="document.getElementById('fileInput').click()" class="p-2.5 text-gray-400 hover:text-blue-500 transition-colors bg-white rounded-full shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                </button>
+                <div class="flex-grow flex items-center py-2.5 px-2 relative">
+                    <input type="text" id="messageInput" placeholder="พิมพ์ข้อความ..." class="bg-transparent w-full text-sm outline-none text-gray-700 placeholder-gray-400 max-h-24 font-medium pr-8" autocomplete="off">
+                    <!-- Emoji Toggle Button -->
+                    <button onclick="toggleEmoji()" class="absolute right-0 text-gray-400 hover:text-yellow-500 transition-colors p-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </button>
+                </div>
+                <button onclick="sendMessage()" class="p-2.5 text-white bg-gradient-to-r from-pink-400 to-rose-500 rounded-full shadow-md hover:shadow-lg transition-all transform active:scale-90" id="sendButton">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                </button>
+            </div>
+            <input type="file" id="fileInput" class="hidden" onchange="handleFileSelect(event)">
+            <input type="file" id="profileInput" class="hidden" onchange="handleProfileSelect(event)">
+        </div>
+    </div>
+
+    <!-- ==================== MP3 PLAYER MODAL ==================== -->
+    <div id="mediaPlayerModal" class="hidden fixed inset-0 z-50 bg-white/95 backdrop-blur-xl flex flex-col animate-slide-up">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-5 bg-white/50">
+            <button onclick="closeMediaPlayer()" class="text-gray-400 hover:text-gray-800 transition-colors p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            <div class="text-xs uppercase tracking-widest text-pink-500 font-bold bg-pink-50 px-3 py-1 rounded-full">Music Player</div>
+            <div class="w-8"></div>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-grow flex flex-col px-8 pt-2 pb-8 overflow-y-auto">
+            
+            <!-- Search View -->
+            <div id="searchView" class="block">
+                <div class="relative mb-6">
+                    <div class="flex items-center bg-gray-100 rounded-2xl px-4 py-3 border border-transparent focus-within:border-pink-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-pink-100 transition-all">
+                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <input type="text" id="youtubeInput" placeholder="ค้นหาชื่อเพลง..." 
+                            onkeypress="if(event.key === 'Enter') performSearch()"
+                            class="bg-transparent w-full outline-none text-gray-700 text-sm placeholder-gray-400 font-medium">
+                    </div>
+                </div>
+                
+                <div id="searchResults" class="space-y-2">
+                    <div class="text-center text-gray-400 mt-10">
+                        <div class="text-4xl mb-2 grayscale opacity-30">💿</div>
+                        <p class="text-sm">พิมพ์ชื่อเพลงแล้วกดค้นหา</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Now Playing View (Hidden by default) -->
+            <div id="nowPlayingView" class="hidden flex-col h-full">
+                <button onclick="backToSearch()" class="mb-4 text-xs font-bold text-gray-400 hover:text-pink-500 flex items-center gap-1 self-start">
+                    ← กลับไปค้นหา
+                </button>
+
+                <!-- Album Art (Embed) -->
+                <div class="w-full aspect-square bg-gray-100 rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.15)] mb-8 relative border-4 border-white">
+                    <div id="youtubeEmbedContainer" class="w-full h-full bg-black flex items-center justify-center pointer-events-none">
+                        <!-- Iframe will be here -->
+                        <span class="text-white text-xs opacity-50">Loading...</span>
+                    </div>
+                    <!-- Cover Overlay to prevent touches on video -->
+                    <div class="absolute inset-0 bg-transparent z-10"></div>
+                </div>
+
+                <!-- Title & Artist -->
+                <div class="text-center mb-8">
+                    <h2 id="playerSongTitle" class="text-2xl font-bold text-gray-800 truncate leading-tight">Song Name</h2>
+                    <p class="text-pink-400 text-sm font-medium mt-1">YouTube Audio</p>
+                </div>
+
+                <!-- Controls -->
+                <div class="mt-auto">
+                    <!-- Fake Progress -->
+                    <div class="w-full bg-gray-100 h-1.5 rounded-full mb-8 overflow-hidden">
+                        <div class="bg-gradient-to-r from-pink-300 to-rose-400 h-full w-1/2 rounded-full relative">
+                            <div class="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-rose-500 rounded-full shadow-md"></div>
+                        </div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex items-center justify-center gap-8">
+                        <button class="text-gray-300 hover:text-gray-600 transition-colors p-2"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+                        
+                        <button onclick="togglePlayState()" id="mainPlayBtn" class="w-20 h-20 bg-gradient-to-tr from-pink-400 to-rose-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-pink-200 transform hover:scale-105 active:scale-95 transition-all">
+                            <svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> <!-- Pause icon initially -->
+                        </button>
+                        
+                        <button class="text-gray-300 hover:text-gray-600 transition-colors p-2"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals (Create Room, Password, etc.) -->
+    
+    <!-- User List Modal -->
+    <div id="userListModal" class="hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onclick="if(event.target===this) toggleUserList()">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-white ring-1 ring-gray-100 scale-100">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">คนในห้อง</h3>
+                <button onclick="toggleUserList()" class="text-gray-400 hover:text-pink-500 text-lg font-bold">✕</button>
+            </div>
+            <div id="userListContent" class="space-y-3 max-h-60 overflow-y-auto pr-1">
+                <!-- User items -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Room Info Modal (New) -->
+    <div id="roomInfoModal" class="hidden fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onclick="if(event.target===this) closeModal('roomInfoModal')">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-white ring-1 ring-gray-100">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800" id="infoModalRoomName">Room Name</h3>
+                    <span class="text-xs px-2 py-0.5 rounded-md font-medium" id="infoModalType">Public</span>
+                </div>
+                <button onclick="closeModal('roomInfoModal')" class="text-gray-400 hover:text-red-500 text-lg">✕</button>
+            </div>
+            
+            <div class="space-y-3">
+                <div class="p-3 bg-gray-50 rounded-xl">
+                    <div class="text-xs text-gray-400 mb-1">รหัสห้อง (Password)</div>
+                    <div class="flex items-center justify-between">
+                        <span id="infoModalPassword" class="font-mono text-gray-800 font-bold text-lg tracking-wider">---</span>
+                        <button onclick="copyPassword()" class="text-blue-500 text-xs font-bold hover:underline bg-blue-50 px-2 py-1 rounded">คัดลอก</button>
+                    </div>
+                    <div id="noPasswordText" class="text-sm text-gray-400 italic hidden">ห้องนี้ไม่มีรหัสผ่าน</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Room -->
+    <div id="createRoomModal" class="hidden fixed inset-0 bg-white/60 z-[60] flex items-center justify-center p-6 backdrop-blur-sm transition-all">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl border border-white ring-1 ring-gray-100 scale-100 animate-slide-up">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">สร้างห้องใหม่</h3>
+            <div class="space-y-4">
+                <input type="text" id="newRoomName" placeholder="ชื่อห้อง..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-700 outline-none focus:border-pink-400 font-medium">
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer bg-white border-2 border-pink-400 rounded-xl p-3 flex flex-col items-center gap-1 shadow-sm transition-all" id="typePublicLabel">
+                        <input type="radio" name="roomType" value="public" class="hidden" checked onchange="toggleRoomType(this.value)">
+                        <span class="text-2xl">🌐</span><span class="text-xs font-bold text-pink-500">สาธารณะ</span>
+                    </label>
+                    <label class="cursor-pointer bg-gray-50 border-2 border-transparent rounded-xl p-3 flex flex-col items-center gap-1 hover:bg-gray-100 transition-all opacity-60 grayscale" id="typePrivateLabel">
+                        <input type="radio" name="roomType" value="private" class="hidden" onchange="toggleRoomType(this.value)">
+                        <span class="text-2xl">🔒</span><span class="text-xs font-bold text-gray-500">ส่วนตัว</span>
+                    </label>
+                </div>
+                <input type="password" id="newRoomPassword" placeholder="ตั้งรหัสผ่าน (จำเป็น)" class="hidden w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-700 outline-none focus:border-orange-400 font-medium">
+            </div>
+            <div class="flex gap-3 mt-8">
+                <button onclick="closeModal('createRoomModal')" class="flex-1 py-3.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-100">ยกเลิก</button>
+                <button onclick="confirmCreateRoom()" class="flex-1 py-3.5 bg-gradient-to-r from-pink-400 to-rose-500 text-white rounded-xl text-sm font-bold shadow-lg">สร้างเลย</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="passwordPromptModal" class="hidden fixed inset-0 bg-white/60 z-[60] flex items-center justify-center p-6 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl border border-white ring-1 ring-gray-100 animate-slide-up">
+            <div class="text-center mb-6"><h3 class="text-xl font-bold text-gray-800">ใส่รหัสผ่าน</h3><p class="text-sm text-gray-400 mt-1" id="promptRoomName"></p></div>
+            <input type="password" id="promptPassword" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-center text-lg text-gray-800 outline-none focus:border-orange-400 mb-6 tracking-widest font-bold">
+            <div class="flex gap-3"><button onclick="closeModal('passwordPromptModal')" class="flex-1 py-3 text-gray-400 text-sm font-bold">ยกเลิก</button><button onclick="submitPassword()" class="flex-1 py-3 bg-orange-400 text-white rounded-xl text-sm font-bold shadow-md">ยืนยัน</button></div>
+        </div>
+    </div>
+
+    <div id="statusToast" class="fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full text-sm font-bold shadow-lg z-[100] text-white bg-gray-800 transition-all duration-300 opacity-0 -translate-y-10 pointer-events-none"></div>
+
+    <script>
+        // --- Core State ---
+        let currentUser = '', currentRoom = null, messages = [], roomRegistry = {}, pendingJoinRoomName = '';
+        let isPlaying = false; 
+        let roomParticipants = []; // Users state
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRegistry();
+            if(localStorage.getItem('last_username')) document.getElementById('loginUsername').value = localStorage.getItem('last_username');
+            renderRoomList();
+            document.getElementById('messageInput').addEventListener('keypress', (e) => { if(e.key==='Enter') sendMessage(); });
+        });
+
+        // --- Mock Search & Player Logic ---
+        function performSearch() {
+            const query = document.getElementById('youtubeInput').value.trim();
+            if(!query) return;
+
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.innerHTML = ''; 
+
+            const mockResults = [
+                { title: query, desc: "Top Result" },
+                { title: `${query} (Official Audio)`, desc: "Audio" },
+                { title: `${query} - Live Version`, desc: "Live Performance" },
+                { title: `${query} (Remix)`, desc: "Remix" }
+            ];
+
+            mockResults.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 hover:border-pink-200 hover:shadow-sm cursor-pointer transition-all";
+                div.onclick = () => loadTrack(item.title);
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-lg text-gray-400">🎵</div>
+                        <div>
+                            <div class="font-bold text-gray-700 text-sm">${item.title}</div>
+                            <div class="text-[10px] text-gray-400">${item.desc}</div>
+                        </div>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-pink-50 text-pink-500 flex items-center justify-center text-xs">▶</div>
+                `;
+                resultsContainer.appendChild(div);
+            });
+        }
+
+        function loadTrack(title) {
+            document.getElementById('searchView').classList.add('hidden');
+            document.getElementById('nowPlayingView').classList.remove('hidden');
+            document.getElementById('nowPlayingView').classList.add('flex');
+            
+            document.getElementById('playerSongTitle').textContent = title;
+            document.getElementById('miniTitle').textContent = title;
+
+            const origin = window.location.origin;
+            const embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(title)}&autoplay=1&controls=0&modestbranding=1&rel=0&enablejsapi=1&origin=${origin}`;
+            
+            document.getElementById('youtubeEmbedContainer').innerHTML = `<iframe id="ytIframe" width="100%" height="100%" src="${embedUrl}" frameborder="0" allow="autoplay; encrypted-media" style="pointer-events: none;"></iframe>`;
+            
+            isPlaying = true;
+            updatePlayButton();
+            document.getElementById('miniPlayer').classList.remove('hidden');
+        }
+
+        function backToSearch() {
+            document.getElementById('nowPlayingView').classList.add('hidden');
+            document.getElementById('nowPlayingView').classList.remove('flex');
+            document.getElementById('searchView').classList.remove('hidden');
+        }
+
+        function togglePlayState() {
+            const iframe = document.getElementById('ytIframe');
+            if(!iframe) return;
+
+            if(isPlaying) {
+                iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+                isPlaying = false;
+            } else {
+                iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                isPlaying = true;
+            }
+            updatePlayButton();
+        }
+
+        function updatePlayButton() {
+            const mainBtn = document.getElementById('mainPlayBtn');
+            const miniBtn = document.getElementById('miniPlayIcon');
+            const miniArt = document.getElementById('miniArtContainer');
+
+            if(isPlaying) {
+                mainBtn.innerHTML = `<svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+                miniBtn.textContent = '⏸';
+                miniArt.classList.remove('paused');
+            } else {
+                mainBtn.innerHTML = `<svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+                miniBtn.textContent = '▶';
+                miniArt.classList.add('paused');
+            }
+        }
+
+        function stopMedia() {
+            document.getElementById('youtubeEmbedContainer').innerHTML = '';
+            document.getElementById('miniPlayer').classList.add('hidden');
+            isPlaying = false;
+            backToSearch(); 
+        }
+
+        // --- User List Logic ---
+        function generateParticipants(currentUser) {
+            const bots = ['น้องแมว', 'Admin', 'DJ_Cat', 'MusicLover'];
+            const count = Math.floor(Math.random() * 3) + 1;
+            const participants = [{name: currentUser, isMe: true}];
+            for(let i=0; i<count; i++) participants.push({name: bots[i], isMe: false});
+            return participants;
+        }
+
+        function toggleUserList() {
+            const modal = document.getElementById('userListModal');
+            if (modal.classList.contains('hidden')) {
+                renderUserListModal();
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function renderUserListModal() {
+            const c = document.getElementById('userListContent');
+            c.innerHTML = roomParticipants.map(u => `
+                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br ${u.isMe?'from-pink-400 to-rose-400':'from-blue-300 to-indigo-300'} flex items-center justify-center text-white text-xs font-bold shadow-sm">${u.name.charAt(0).toUpperCase()}</div>
+                        <div class="text-sm text-gray-700 font-medium">${u.name} ${u.isMe?'(คุณ)':''}</div>
+                    </div>
+                    <div class="w-2 h-2 rounded-full bg-green-400 shadow-sm animate-pulse"></div>
+                </div>
+            `).join('');
+        }
+
+        function updateOnlineCount() {
+           document.getElementById('onlineCount').textContent = roomParticipants.length;
+        }
+
+        // --- Room Info Logic (New) ---
+        function showRoomInfo() {
+            const roomData = roomRegistry[currentRoom];
+            document.getElementById('infoModalRoomName').textContent = currentRoom;
+            
+            const typeBadge = document.getElementById('infoModalType');
+            const passContainer = document.getElementById('infoModalPassword').parentElement.parentElement;
+            const passText = document.getElementById('infoModalPassword');
+            const noPassText = document.getElementById('noPasswordText');
+
+            if (roomData.type === 'private') {
+                typeBadge.textContent = 'Private Room';
+                typeBadge.className = 'text-xs px-2 py-0.5 rounded-md font-medium bg-orange-100 text-orange-500';
+                passText.textContent = roomData.password;
+                passText.parentElement.classList.remove('hidden');
+                noPassText.classList.add('hidden');
+            } else {
+                typeBadge.textContent = 'Public Room';
+                typeBadge.className = 'text-xs px-2 py-0.5 rounded-md font-medium bg-blue-100 text-blue-500';
+                passText.parentElement.classList.add('hidden');
+                noPassText.classList.remove('hidden');
+            }
+            
+            document.getElementById('roomInfoModal').classList.remove('hidden');
+        }
+
+        function copyPassword() {
+            const pass = document.getElementById('infoModalPassword').textContent;
+            const el = document.createElement('textarea');
+            el.value = pass;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast('คัดลอกรหัสแล้ว');
+        }
+
+        // --- Standard Chat & Room Logic ---
+        function loadRegistry() { const s = localStorage.getItem('chat_room_registry'); roomRegistry = s ? JSON.parse(s) : {"Lobby": {type:'public', createdAt:Date.now()}}; }
+        function saveRegistry() { localStorage.setItem('chat_room_registry', JSON.stringify(roomRegistry)); }
+        
+        function renderRoomList() {
+            const c = document.getElementById('roomListContainer'); c.innerHTML = '';
+            Object.entries(roomRegistry).forEach(([name, data]) => {
+                const isPrivate = data.type === 'private';
+                const d = document.createElement('div');
+                d.className = "flex items-center justify-between p-4 bg-white/70 backdrop-blur-sm rounded-2xl border border-white shadow-sm hover:shadow-md transition-all cursor-pointer group mb-2";
+                d.onclick = () => attemptJoinRoom(name);
+                d.innerHTML = `<div class="flex items-center gap-4"><div class="w-12 h-12 ${isPrivate?'bg-orange-100 text-orange-400':'bg-blue-100 text-blue-400'} rounded-2xl flex items-center justify-center font-bold text-xl shadow-inner">${isPrivate?'🔒':'#'}</div><div><div class="font-bold text-base text-gray-700">${name}</div><div class="text-[10px] text-gray-400 font-medium uppercase tracking-wide bg-white px-2 py-0.5 rounded-md inline-block mt-1 shadow-sm border border-gray-100">${isPrivate?'Private':'Public'}</div></div></div><div class="text-gray-300">➜</div>`;
+                c.appendChild(d);
+            });
+        }
+
+        function attemptJoinRoom(name) {
+            const user = document.getElementById('loginUsername').value.trim();
+            if(!user) { showToast('กรุณาใส่ชื่อของคุณ'); return; }
+            if(!roomRegistry[name]) { if(confirm('สร้างห้องใหม่?')) { roomRegistry[name]={type:'public'}; saveRegistry(); } else return; }
+            if(roomRegistry[name].type === 'private') {
+                pendingJoinRoomName = name;
+                document.getElementById('promptRoomName').textContent = name;
+                document.getElementById('passwordPromptModal').classList.remove('hidden');
+            } else enterRoom(name);
+        }
+
+        function enterRoom(name) {
+            currentUser = document.getElementById('loginUsername').value.trim();
+            localStorage.setItem('last_username', currentUser);
+            currentRoom = name;
+            
+            // Generate users
+            roomParticipants = generateParticipants(currentUser);
+            updateOnlineCount();
+
+            document.getElementById('lobbyScreen').classList.add('hidden');
+            document.getElementById('chatApp').classList.remove('hidden');
+            document.getElementById('chatApp').classList.add('flex');
+            document.getElementById('displayRoomName').textContent = name;
+            document.getElementById('displayUsername').textContent = currentUser;
+            document.getElementById(roomRegistry[name].type==='private'?'roomLockIcon':'roomLockIcon').classList[roomRegistry[name].type==='private'?'remove':'add']('hidden');
+            loadMessages();
+        }
+
+        function leaveRoom() {
+            document.getElementById('chatApp').classList.remove('flex');
+            document.getElementById('chatApp').classList.add('hidden');
+            document.getElementById('lobbyScreen').classList.remove('hidden');
+            currentRoom = null;
+            closeMediaPlayer();
+        }
+
+        function loadMessages() {
+            messages = JSON.parse(localStorage.getItem(`chat_msg_${currentRoom}`) || '[]');
+            if(messages.length===0) messages.push({id:Date.now(), text:`ยินดีต้อนรับสู่ ${currentRoom}`, sys:true});
+            renderMessages();
+        }
+        function renderMessages() {
+            const c = document.getElementById('chatMessages');
+            c.innerHTML = messages.map(m => {
+                if(m.sys) return `<div class="flex justify-center my-3"><span class="text-[10px] text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm">${m.text}</span></div>`;
+                const isMe = m.user === currentUser;
+                return `<div class="flex ${isMe?'justify-end':'justify-start'} mb-4 animate-slide-up"><div class="max-w-[75%] flex flex-col ${isMe?'items-end':'items-start'}">${!isMe?`<div class="text-[10px] text-gray-400 mb-1 ml-1">${m.user}</div>`:''} <div class="${isMe?'bg-gradient-to-tr from-pink-500 to-rose-400 text-white shadow-pink-200':'bg-white text-gray-700 border border-gray-100'} px-4 py-2.5 rounded-2xl ${isMe?'rounded-br-sm':'rounded-bl-sm'} text-sm shadow-md">${m.text||''} ${m.file?renderAttachment(m):''}</div></div></div>`;
+            }).join('');
+            c.scrollTop = c.scrollHeight;
+        }
+        function renderAttachment(m) {
+            if(m.fileType && m.fileType.startsWith('image/')) return `<img src="${m.file}" class="mt-2 rounded-xl max-h-48 w-full object-cover border-2 border-white/50" onclick="window.open('${m.file}')">`;
+            return `<div class="mt-1 flex items-center gap-2 text-xs bg-white/20 p-2 rounded-lg">📎 <span>${m.fileName}</span></div>`;
+        }
+        async function sendMessage() {
+            const txt = document.getElementById('messageInput').value.trim();
+            const file = document.getElementById('fileInput').files[0];
+            if(!txt && !file) return;
+            let fData=null, fName=null, fType=null;
+            if(file) { fData = await new Promise(r=>{const rd=new FileReader();rd.onload=e=>r(e.target.result);rd.readAsDataURL(file)}); fName=file.name; fType=file.type; }
+            messages.push({id:Date.now(), user:currentUser, text:txt, file:fData, fileName:fName, fileType:fType, sys:false});
+            localStorage.setItem(`chat_msg_${currentRoom}`, JSON.stringify(messages));
+            renderMessages();
+            document.getElementById('messageInput').value='';
+            clearFile();
+        }
+
+        // Utils
+        function toggleEmoji() { const p = document.getElementById('emojiPanel'); p.classList.toggle('hidden'); }
+        function addEmoji(e) { const i = document.getElementById('messageInput'); i.value += e; i.focus(); }
+        function openMediaPlayer() { document.getElementById('mediaPlayerModal').classList.remove('hidden'); }
+        function closeMediaPlayer() { document.getElementById('mediaPlayerModal').classList.add('hidden'); }
+        function handleFileSelect(e) { if(e.target.files[0]) { document.getElementById('previewContainer').classList.remove('hidden'); document.getElementById('filePreviewBadge').classList.remove('hidden'); document.getElementById('filePreviewBadge').classList.add('flex'); document.getElementById('fileName').textContent=e.target.files[0].name; } }
+        function clearFile() { document.getElementById('fileInput').value=''; document.getElementById('previewContainer').classList.add('hidden'); }
+        function openCreateRoomModal() { const u=document.getElementById('loginUsername').value.trim(); if(!u){showToast('กรุณาใส่ชื่อของคุณ');return;} document.getElementById('createRoomModal').classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function toggleRoomType(v) {
+            const p1=document.getElementById('typePrivateLabel'), p2=document.getElementById('typePublicLabel'), inp=document.getElementById('newRoomPassword');
+            const act=(e)=>{e.classList.remove('opacity-60','grayscale','border-transparent');e.classList.add('border-2'); if(e.id.includes('Private'))e.classList.add('border-orange-400');else e.classList.add('border-pink-400');};
+            const inact=(e)=>{e.classList.add('opacity-60','grayscale','border-transparent');e.classList.remove('border-2','border-pink-400','border-orange-400');};
+            if(v==='private'){ act(p1); inact(p2); inp.classList.remove('hidden'); } else { act(p2); inact(p1); inp.classList.add('hidden'); }
+        }
+        function confirmCreateRoom() {
+            const n=document.getElementById('newRoomName').value.trim(), t=document.querySelector('input[name="roomType"]:checked').value, p=document.getElementById('newRoomPassword').value.trim();
+            if(!n){showToast('ระบุชื่อห้อง');return;} if(t==='private'&&!p){showToast('ระบุรหัสผ่าน');return;} if(roomRegistry[n]){showToast('ชื่อซ้ำ');return;}
+            roomRegistry[n]={type:t,password:p}; saveRegistry(); closeModal('createRoomModal'); renderRoomList(); enterRoom(n);
+        }
+        function quickJoin(){ const n=document.getElementById('quickJoinRoomName').value; if(n) attemptJoinRoom(n); }
+        function submitPassword(){ if(document.getElementById('promptPassword').value===roomRegistry[pendingJoinRoomName].password){closeModal('passwordPromptModal');enterRoom(pendingJoinRoomName);}else showToast('รหัสผ่านผิด'); }
+        function showToast(m){ const t=document.getElementById('statusToast'); t.textContent=m; t.classList.remove('opacity-0','-translate-y-10'); setTimeout(()=>t.classList.add('opacity-0','-translate-y-10'),2000); }
+    </script>
+</body>
+</html>
