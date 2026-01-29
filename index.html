@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chatroom Pro (Radio Edition)</title>
+    <title>Chatroom Pro (Music Edition)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 1️⃣ เพิ่ม HLS.js -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -61,7 +61,7 @@
                 <img id="userAvatar" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Chat" alt="Avatar" class="w-20 h-20">
             </div>
             <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">Chatroom</h1>
-            <p class="text-gray-600 text-sm mt-1">📻 Thai Radio Sync Online</p>
+            <p class="text-gray-600 text-sm mt-1">📻 Music Sync Online</p>
         </div>
 
         <div class="bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/50 space-y-4">
@@ -128,10 +128,10 @@
         <!-- Mini Player -->
         <div id="miniPlayer" class="hidden absolute bottom-20 left-4 right-4 bg-white/90 backdrop-blur-md rounded-2xl p-2 flex items-center justify-between border border-pink-100 shadow-lg z-20 animate-slide-up">
             <div class="flex items-center gap-3 overflow-hidden">
-                <div id="miniDisc" class="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-xs flex-shrink-0">📻</div>
+                <div id="miniDisc" class="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-xs flex-shrink-0">🎵</div>
                 <div class="overflow-hidden text-left">
-                    <div id="miniSongTitle" class="text-[10px] font-bold text-gray-800 truncate">Station Name</div>
-                    <div id="miniSongArtist" class="text-[9px] text-red-500 flex items-center"><span class="live-dot animate-pulse"></span> LIVE THAILAND</div>
+                    <div id="miniSongTitle" class="text-[10px] font-bold text-gray-800 truncate">Song Name</div>
+                    <div id="miniSongArtist" class="text-[9px] text-red-500 flex items-center"><span class="live-dot animate-pulse"></span> NOW PLAYING</div>
                 </div>
             </div>
             <div class="flex items-center gap-1">
@@ -173,24 +173,24 @@
         </div>
     </div>
 
-    <!-- Radio Modal -->
+    <!-- Music/Radio Modal -->
     <div id="musicModal" class="hidden fixed inset-0 bg-white/95 backdrop-blur-xl z-50 flex flex-col">
         <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <button onclick="closeModal('musicModal')" class="text-gray-400 p-1 text-2xl">✕</button>
             <span class="text-xs font-bold text-pink-500 uppercase tracking-widest bg-pink-50 px-4 py-1.5 rounded-full">
-                Thai Radio Station
+                Music Playlist <span id="adminBadge" class="hidden bg-yellow-400 text-white px-1.5 rounded-full text-[8px]">👑</span>
             </span>
             <div class="w-6"></div>
         </div>
         <div class="flex-grow p-6 flex flex-col items-center justify-center space-y-8 overflow-y-auto custom-scroll">
             <div id="playerDisc" class="w-44 h-44 rounded-full bg-gray-900 border-8 border-gray-800 shadow-2xl flex items-center justify-center relative flex-shrink-0">
-                <div class="w-12 h-12 bg-pink-500 rounded-full flex items-center justify-center text-white font-black text-[10px]">LIVE</div>
+                <div class="w-12 h-12 bg-pink-500 rounded-full flex items-center justify-center text-white font-black text-[10px]">MUSIC</div>
                 <div class="absolute w-2 h-2 bg-white rounded-full"></div>
             </div>
             
             <div class="text-center w-full max-w-[280px]">
-                <h2 id="playerSongTitle" class="text-xl font-bold text-gray-800 truncate">เลือกสถานีวิทยุไทย</h2>
-                <p id="playerSongArtist" class="text-red-500 text-xs font-bold flex items-center justify-center mt-1"><span class="live-dot animate-pulse"></span> LIVE STREAMING</p>
+                <h2 id="playerSongTitle" class="text-xl font-bold text-gray-800 truncate">เลือกเพลง</h2>
+                <p id="playerSongArtist" class="text-red-500 text-xs font-bold flex items-center justify-center mt-1"><span class="live-dot animate-pulse"></span> NOW PLAYING</p>
             </div>
 
             <div class="flex items-center gap-6">
@@ -202,7 +202,7 @@
 
             <div class="w-full max-w-sm space-y-3">
                 <div class="flex gap-2">
-                    <input id="radioUrlInput" class="flex-grow bg-gray-50 border border-gray-100 rounded-xl p-2 text-xs outline-none focus:ring-1 focus:ring-pink-200" placeholder="เพิ่มลิงก์วิทยุเอง (mp3/m3u8)...">
+                    <input id="radioUrlInput" class="flex-grow bg-gray-50 border border-gray-100 rounded-xl p-2 text-xs outline-none focus:ring-1 focus:ring-pink-200" placeholder="เพิ่มลิงก์เพลง (mp3)...">
                     <button onclick="addNewRadioStation()" class="bg-blue-50 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md">เพิ่ม</button>
                 </div>
                 <div id="playlistContainer" class="w-full space-y-2 max-h-64 overflow-y-auto custom-scroll px-2 border-t pt-3 text-left"></div>
@@ -258,52 +258,54 @@
         let musicState = { playingIndex: 0, isPlaying: false };
         let audioUnlocked = false;
         
-        // 🔥 Updated Radio List (CORS-Friendly / HLS)
+        // 🔥 รายการเพลง MP3 ใหม่
         let radioStations = [
-            { title: "COOLfahrenheit", artist: "RS Music", src: "https://coolism-web.cdn.byteark.com/stream/1/playlist.m3u8" },
-            { title: "EFM 94", artist: "Atime", src: "https://atime-edge.cdn.byteark.com/efm/playlist.m3u8" },
-            { title: "Green Wave 106.5", artist: "Atime", src: "https://atime-edge.cdn.byteark.com/greenwave/playlist.m3u8" },
-            { title: "Chill Online", artist: "Atime", src: "https://atime-edge.cdn.byteark.com/chill/playlist.m3u8" },
-            { title: "HITZ Thailand", artist: "Tero", src: "https://teroradio-hitz955.cdn.byteark.com/hitz955/playlist.m3u8" },
-            { title: "EAZY FM 105.5", artist: "Tero", src: "https://teroradio-eazyfm.cdn.byteark.com/eazyfm/playlist.m3u8" },
-            { title: "Flex 104.5", artist: "Flex", src: "https://fj1045.cdn.byteark.com/live/playlist.m3u8" },
-            { title: "Met 107", artist: "MCOT", src: "https://mcot-web.cdn.byteark.com/met107/playlist.m3u8" },
-            { title: "Active 99", artist: "MCOT", src: "https://mcot-web.cdn.byteark.com/fm99/playlist.m3u8" },
-            { title: "MCOT 95", artist: "MCOT", src: "https://mcot-web.cdn.byteark.com/fm95/playlist.m3u8" },
-            { title: "Cat Radio", artist: "Indie", src: "https://www.thisiscat.com/catradio.mp3" },
-            { title: "Radio Thailand", artist: "NBT", src: "https://nbt1.prd.go.th/live/fm925.m3u8" }
+            {
+                title: "เพลงที่ 1",
+                artist: "My Playlist",
+                src: "https://drive-music-server.onrender.com/music/001.mp3"
+            },
+            {
+                title: "เพลงที่ 2",
+                artist: "My Playlist",
+                src: "https://drive-music-server.onrender.com/music/002.mp3"
+            },
+            {
+                title: "เพลงที่ 3",
+                artist: "My Playlist",
+                src: "https://drive-music-server.onrender.com/music/003.mp3"
+            },
+            {
+                title: "เพลงที่ 4",
+                artist: "My Playlist",
+                src: "https://drive-music-server.onrender.com/music/004.mp3"
+            }
         ];
 
-        // 2️⃣ ปรับการตั้งค่า audio (ใช้ Element จาก HTML)
+        // 2️⃣ ปรับการตั้งค่า audio (ใช้ Element จาก HTML และลบ crossOrigin ออกเพื่อความชัวร์)
         const audio = document.getElementById("mainAudio");
         audio.preload = "auto";
-        audio.crossOrigin = "anonymous";
+        // audio.crossOrigin = "anonymous"; // ลบออกเพื่อให้โหลดไฟล์ง่ายขึ้น
         
-        let hls = null;
+        let hls = null; // คงไว้ตามคำแนะนำ (แต่ไม่ได้ใช้กับ MP3)
 
-        audio.onplaying = () => showToast("📻 วิทยุกำลังเล่น");
-        audio.onwaiting = () => showToast("⏳ กำลังโหลดสัญญาณ...");
+        audio.onplaying = () => showToast("🎵 กำลังเล่นเพลง");
+        audio.onwaiting = () => showToast("⏳ กำลังโหลด...");
         audio.onstalled = () => showToast("⚠️ สัญญาณขาด");
+        
+        // 🔥 เพิ่ม Listener เช็คสถานะไฟล์จริง
+        audio.onloadeddata = () => console.log("🎧 audio loaded");
+        audio.onerror = (e) => {
+            console.error("❌ audio error", e);
+            showToast("❌ โหลดไฟล์เพลงไม่สำเร็จ");
+        };
         
         // 🔥 ฟังก์ชัน Unlock Audio แบบชัวร์
         function unlockAudioWithSource() {
             if (audioUnlocked) return;
             
-            const unlockSrc = radioStations[0].src;
-            
-            if (unlockSrc.includes(".m3u8")) {
-                if (Hls.isSupported()) {
-                   if(hls) { hls.destroy(); }
-                   hls = new Hls();
-                   hls.loadSource(unlockSrc);
-                   hls.attachMedia(audio);
-                } else if (audio.canPlayType("application/vnd.apple.mpegurl")) {
-                   audio.src = unlockSrc;
-                }
-            } else {
-                audio.src = unlockSrc;
-            }
-
+            // ใช้เพลงแรกเพื่อ unlock
+            audio.src = radioStations[0].src;
             audio.muted = true;
             
             audio.play().then(() => {
@@ -638,61 +640,34 @@
             }
         }
 
-        // 3️⃣ ปรับ applyRadioState ให้รองรับ HLS
+        // 3️⃣ ปรับ applyRadioState ให้เล่น MP3 ตามปกติ (ไม่ต้องเช็ค m3u8 แล้ว)
         function applyRadioState() {
             const station = radioStations[musicState.playingIndex];
             if (!station) return;
 
             if (musicState.isPlaying) {
-                // 🔥 ถ้าเป็น HLS (.m3u8)
-                if (station.src.includes(".m3u8")) {
-                    if (hls) { 
-                        hls.detachMedia();
-                        hls.destroy(); 
-                        hls = null; 
-                    }
-
-                    if (Hls.isSupported()) {
-                        hls = new Hls({ lowLatencyMode: true });
-                        hls.loadSource(station.src);
-                        hls.attachMedia(audio);
-                        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                            audio.play().catch(e => console.warn("Autoplay blocked (HLS)", e));
-                        });
-                    } else if (audio.canPlayType("application/vnd.apple.mpegurl")) {
-                        audio.src = station.src; // Safari
-                        audio.play().catch(e => console.warn("Autoplay blocked (Safari)", e));
-                    }
-                } 
-                // 🔊 ถ้าเป็น MP3 / Icecast
-                else {
-                    if (hls) { 
-                        hls.detachMedia();
-                        hls.destroy(); 
-                        hls = null; 
-                    }
-                    if (audio.src !== station.src) {
-                        audio.pause();
-                        audio.src = station.src;
-                        audio.load();
-                    }
-                    audio.play().catch(err => {
-                        console.warn("Play failed:", err);
-                        showToast("⚠️ เบราว์เซอร์บล็อกเสียง กด ▶ อีกครั้ง");
-                    });
-                }
-
-                document.getElementById("miniPlayer").classList.remove("hidden");
-                document.getElementById("playerDisc").classList.add("disk-spin");
-            } else {
-                audio.pause();
-                audio.removeAttribute("src"); // คืน resource
-                audio.load();
                 if (hls) { 
                     hls.detachMedia();
                     hls.destroy(); 
                     hls = null; 
                 }
+                
+                // 🔊 MP3
+                if (audio.src !== station.src) {
+                    audio.pause();
+                    audio.src = station.src;
+                    audio.load();
+                }
+                audio.play().catch(err => {
+                    console.warn("Play failed:", err);
+                    showToast("⚠️ เบราว์เซอร์บล็อกเสียง กด ▶ อีกครั้ง");
+                });
+
+                document.getElementById("miniPlayer").classList.remove("hidden");
+                document.getElementById("playerDisc").classList.add("disk-spin");
+            } else {
+                audio.pause();
+                // ❌ ลบ removeAttribute("src") ออก เพื่อไม่ให้ context หาย
                 document.getElementById("miniPlayer").classList.add("hidden");
                 document.getElementById("playerDisc").classList.remove("disk-spin");
             }
@@ -709,8 +684,25 @@
             renderRadioList();
         }
 
-        // ✅ ปลดล็อค: ทุกคนกดได้
+        // ✅ ปลดล็อค: ทุกคนกดได้ (แก้ไข toggleMusicPlayback: บังคับ unlock เมื่อกดปุ่ม)
         window.toggleMusicPlayback = async () => {
+             // 🔓 บังคับ unlock ก่อนทุกครั้ง
+            if (!audioUnlocked) {
+                try {
+                    audio.src = radioStations[musicState.playingIndex].src;
+                    audio.muted = true;
+                    await audio.play();
+                    audio.pause();
+                    audio.muted = false;
+                    audioUnlocked = true;
+                    console.log("🔓 Audio unlocked by user click");
+                } catch (e) {
+                    console.warn("Unlock failed", e);
+                    showToast("❌ ต้องกดปุ่ม ▶ อีกครั้ง");
+                    return;
+                }
+            }
+
             musicState.isPlaying = !musicState.isPlaying;
             applyRadioState();
             await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:RADIO:${musicState.isPlaying ? 'PLAY' : 'STOP'}:${musicState.playingIndex}`, isSystem: true });
@@ -723,6 +715,21 @@
         };
 
         window.changeTrackTo = async (idx) => {
+            // 🔓 บังคับ unlock ก่อนเปลี่ยนเพลง
+            if (!audioUnlocked) {
+                try {
+                    audio.src = radioStations[idx].src;
+                    audio.muted = true;
+                    await audio.play();
+                    audio.pause();
+                    audio.muted = false;
+                    audioUnlocked = true;
+                } catch (e) {
+                    showToast("❌ กดเปลี่ยนเพลงอีกครั้ง");
+                    return;
+                }
+            }
+            
             musicState.playingIndex = idx;
             musicState.isPlaying = true;
             applyRadioState();
@@ -782,7 +789,7 @@
         window.togglePlayerModal = () => { 
             openModal('musicModal'); 
             renderRadioList(); 
-            unlockAudioWithSource(); // ✅ เรียกฟังก์ชัน unlock ใหม่
+            // ไม่เรียก unlock ที่นี่แล้ว ไปเรียกที่ปุ่มกดแทน
         };
         window.toggleUserListModal = () => { openModal('userModal'); updatePresence(); };
         
