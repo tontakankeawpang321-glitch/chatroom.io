@@ -125,7 +125,7 @@
         <!-- Main Content Area (Tabs) -->
         <div id="lobbyContent" class="flex-grow overflow-y-auto p-4 custom-scroll pb-24">
             
-            <!-- Tab 1: Create Room (หน้าแรก) -->
+            <!-- Tab 1: Create Room -->
             <div id="tabCreate" class="space-y-6">
                 <!-- ตั้งค่าโปรไฟล์ -->
                 <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
@@ -361,7 +361,7 @@
         </div>
     </div>
     
-    <audio id="mainAudio" class="hidden"></audio>
+    <audio id="mainAudio" preload="auto" class="hidden"></audio>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzmXBYSGjjmnsLCcqHGcf0KrpHjt__dPcOnusfqibZrhnqRyCNWRalsU50EOlzwH3BtuQ/exec';
@@ -533,7 +533,10 @@
             document.getElementById('currentRoomName').textContent = name;
             document.getElementById('lockIcon').classList.toggle('hidden', !currentRoomPassword);
             await loadMessages(); await updatePresence();
-            pollingIntervals = [setInterval(loadMessages, 4000), setInterval(updatePresence, 10000)];
+            pollingIntervals = [
+                setInterval(loadMessages, 1000), // เร็วขึ้นตามต้องการ
+                setInterval(updatePresence, 8000)
+            ];
         }
 
         async function updatePresence() {
@@ -585,9 +588,35 @@
             list.scrollTo(0, list.scrollHeight);
         }
 
+        // ✅ แก้ไข: แสดงก่อน ส่งทีหลัง (Optimistic UI)
         async function sendMessage() {
-            const input = document.getElementById('messageInput'); const val = input.value.trim();
-            if(!val) return; input.value = ''; await api('addMessage', { room: currentRoom, user: currentUsername, text: val }); loadMessages();
+            const input = document.getElementById('messageInput');
+            const val = input.value.trim();
+            if (!val) return;
+
+            input.value = '';
+
+            // แสดงข้อความทันที (ไม่รอ backend)
+            const tempMsg = {
+                id: 'temp-' + Date.now(),
+                user: currentUsername,
+                text: val
+            };
+            messages.push(tempMsg);
+            renderMessages();
+
+            // ส่งจริงไป backend
+            const res = await api('addMessage', {
+                room: currentRoom,
+                user: currentUsername,
+                text: val
+            });
+
+            if (res.ok) {
+                loadMessages(); // ดึงของจริงมาแทน
+            } else {
+                showToast("ส่งข้อความไม่สำเร็จ");
+            }
         }
 
         async function deleteMsg(id) {
@@ -610,13 +639,22 @@
             }; reader.readAsDataURL(file);
         }
 
+        // ✅ แก้ไข: applyRadioState ใหม่
         function applyRadioState() {
             const s = radioStations[musicState.playingIndex];
+            if (!s) return;
+
+            if (audio.src !== s.src) {
+                audio.src = s.src;
+                audio.load(); // บังคับ buffer
+            }
+
             if (musicState.isPlaying) {
-                if(audio.src !== s.src) audio.src = s.src;
-                audio.play().catch(() => { musicState.isPlaying = false; updateRadioUI(); });
-                document.getElementById("miniPlayer").classList.remove("hidden"); document.getElementById("playerDisc").classList.add("disk-spin");
-            } else { audio.pause(); document.getElementById("miniPlayer").classList.add("hidden"); document.getElementById("playerDisc").classList.remove("disk-spin"); }
+                audio.play().catch(() => {});
+            } else {
+                audio.pause();
+            }
+
             updateRadioUI();
         }
 
