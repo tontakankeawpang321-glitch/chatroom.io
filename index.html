@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chatroom Pro (Music Edition)</title>
+    <title>Chatroom (Free Music)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -39,6 +39,29 @@
             margin-right: 5px;
             box-shadow: 0 0 8px #ef4444;
         }
+        /* Custom Range Slider */
+        input[type=range] {
+            height: 4px;
+            -webkit-appearance: none;
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ec4899;
+            margin-top: -6px;
+            box-shadow: 0 2px 6px rgba(236, 72, 153, 0.4);
+            cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e5e7eb;
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center">
@@ -61,7 +84,7 @@
                 <img id="userAvatar" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Chat" alt="Avatar" class="w-20 h-20">
             </div>
             <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">Chatroom</h1>
-            <p class="text-gray-600 text-sm mt-1">📻 Music Sync Online</p>
+            <p class="text-gray-600 text-sm mt-1">📻 ฟังเพลงแบบส่วนตัว</p>
         </div>
 
         <div class="bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/50 space-y-4">
@@ -107,13 +130,10 @@
                         <span id="currentRoomName" class="truncate">Room</span>
                         <span id="lockIcon" class="hidden text-orange-400 text-xs">🔒</span>
                     </div>
-                    <div class="text-[10px] text-gray-500 flex items-center gap-1 font-medium truncate">
-                        <span class="text-yellow-500">👑 หัวห้อง:</span> <span id="currentAdminName" class="font-bold text-pink-600">System</span>
-                    </div>
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-                <button id="musicToggleBtn" onclick="togglePlayerModal()" class="p-2 rounded-full border transition-all bg-gray-50 border-gray-100 text-gray-400">
+                <button id="musicToggleBtn" onclick="togglePlayerModal()" class="p-2 rounded-full border transition-all bg-gray-50 border-gray-100 text-gray-400 hover:text-pink-500 hover:border-pink-200">
                     📻
                 </button>
                 <button onclick="toggleUserListModal()" class="p-2 bg-blue-50 border border-blue-100 rounded-full text-blue-500 relative">
@@ -131,7 +151,7 @@
                 <div id="miniDisc" class="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-xs flex-shrink-0">🎵</div>
                 <div class="overflow-hidden text-left">
                     <div id="miniSongTitle" class="text-[10px] font-bold text-gray-800 truncate">Song Name</div>
-                    <div id="miniSongArtist" class="text-[9px] text-red-500 flex items-center"><span class="live-dot animate-pulse"></span> NOW PLAYING</div>
+                    <div id="miniSongArtist" class="text-[9px] text-red-500 flex items-center"><span class="live-dot animate-pulse"></span> NOW PLAYING (Local)</div>
                 </div>
             </div>
             <div class="flex items-center gap-1">
@@ -175,12 +195,12 @@
         <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <button onclick="closeModal('musicModal')" class="text-gray-400 p-1 text-2xl">✕</button>
             <span class="text-xs font-bold text-pink-500 uppercase tracking-widest bg-pink-50 px-4 py-1.5 rounded-full">
-                Music Playlist <span id="adminBadge" class="hidden bg-yellow-400 text-white px-1.5 rounded-full text-[8px]">👑</span>
+                100 เพลงฮิตไทย ปัจจุบัน
             </span>
             <div class="w-6"></div>
         </div>
-        <div class="flex-grow p-6 flex flex-col items-center justify-center space-y-8 overflow-y-auto custom-scroll">
-            <div id="playerDisc" class="w-44 h-44 rounded-full bg-gray-900 border-8 border-gray-800 shadow-2xl flex items-center justify-center relative flex-shrink-0">
+        <div class="flex-grow p-6 flex flex-col items-center justify-center space-y-6 overflow-y-auto custom-scroll">
+            <div id="playerDisc" class="w-44 h-44 rounded-full bg-gray-900 border-8 border-gray-800 shadow-2xl flex items-center justify-center relative flex-shrink-0 transition-transform duration-700">
                 <div class="w-12 h-12 bg-pink-500 rounded-full flex items-center justify-center text-white font-black text-[10px]">MUSIC</div>
                 <div class="absolute w-2 h-2 bg-white rounded-full"></div>
             </div>
@@ -188,6 +208,15 @@
             <div class="text-center w-full max-w-[280px]">
                 <h2 id="playerSongTitle" class="text-xl font-bold text-gray-800 truncate">เลือกเพลง</h2>
                 <p id="playerSongArtist" class="text-red-500 text-xs font-bold flex items-center justify-center mt-1"><span class="live-dot animate-pulse"></span> NOW PLAYING</p>
+            </div>
+
+            <!-- Time Slider -->
+            <div class="w-full max-w-[280px] space-y-1">
+                <input type="range" id="progressBar" min="0" max="100" value="0" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500">
+                <div class="flex justify-between text-[10px] text-gray-400 font-bold">
+                    <span id="currentTimeDisplay">0:00</span>
+                    <span id="durationDisplay">0:00</span>
+                </div>
             </div>
 
             <div class="flex items-center gap-6">
@@ -214,11 +243,6 @@
                 <button onclick="closeModal('userModal')" class="text-gray-400 text-xl font-bold">✕</button>
             </div>
             <div id="onlineUsersList" class="space-y-2 pt-2 text-left"></div>
-            <div id="requestAdminArea" class="pt-4 border-t hidden">
-                <button onclick="requestAdminPrivilege()" class="w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white py-3 rounded-2xl font-bold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
-                    👑 ขอเป็นหัวห้อง
-                </button>
-            </div>
         </div>
     </div>
 
@@ -237,7 +261,7 @@
     <audio id="mainAudio" class="hidden"></audio>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbyN2O8J4B4pGFt31h955kLF9U_m7hyCLqRTDpsanJzUZw8DyUR4mOwJaN7T0t7CgGYK/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzmXBYSGjjmnsLCcqHGcf0KrpHjt__dPcOnusfqibZrhnqRyCNWRalsU50EOlzwH3BtuQ/exec';
 
         // State Management
         let currentUsername = localStorage.getItem('chat_username') || '';
@@ -245,19 +269,20 @@
         let roomRegistry = {};
         let messages = [];
         let pollingIntervals = [];
-        let actingAdmin = 'System'; 
         let musicState = { playingIndex: 0, isPlaying: false };
         let audioUnlocked = false;
         
         let radioStations = [
-            { title: "สากล", artist: "Live Radio", src: "http://27.254.142.208:8400/stream" },
-            { title: "สตริง", artist: "Live Radio", src: "http://27.254.142.208:8100/stream" },
-            { title: "ลูกทุ่ง", artist: "Live Radio", src: "http://27.254.142.208:8200/stream" },
-            { title: "เพื่อชีวิต", artist: "Live Radio", src: "http://27.254.142.208:8300/stream" },
-            { title: "แดนซ์", artist: "Live Radio", src: "http://27.254.142.208:8500/stream" }
+            { title: "เพลงที่ 1", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/001.mp3" },
+            { title: "เพลงที่ 2", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/002.mp3" },
+            { title: "เพลงที่ 3", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/003.mp3" },
+            { title: "เพลงที่ 4", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/004.mp3" }
         ];
 
         const audio = document.getElementById("mainAudio");
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeDisplay = document.getElementById('currentTimeDisplay');
+        const durationDisplay = document.getElementById('durationDisplay');
         
         audio.onplaying = () => showToast("🎵 กำลังเล่นเพลง");
         audio.onerror = (e) => {
@@ -265,9 +290,37 @@
             showToast("❌ โหลดไฟล์เพลงไม่สำเร็จ");
         };
 
-        // 🔧 แก้จุดที่ 1: ตรวจสอบหัวห้องจากตัวแปร actingAdmin โดยตรง
-        function isRealRoomAdmin() {
-            return actingAdmin === currentUsername;
+        // Time Update Listener
+        audio.addEventListener('timeupdate', () => {
+            if(!audio.duration) return;
+            const progress = (audio.currentTime / audio.duration) * 100;
+            progressBar.value = progress;
+            currentTimeDisplay.textContent = formatTime(audio.currentTime);
+        });
+
+        // Duration Load Listener
+        audio.addEventListener('loadedmetadata', () => {
+            durationDisplay.textContent = formatTime(audio.duration);
+            progressBar.value = 0;
+        });
+
+        // Auto Next Track
+        audio.addEventListener('ended', () => {
+            changeTrack(1);
+        });
+
+        // Seek Bar Interaction
+        progressBar.addEventListener('input', (e) => {
+            if(!audio.duration) return;
+            const seekTime = (e.target.value / 100) * audio.duration;
+            audio.currentTime = seekTime;
+        });
+
+        function formatTime(s) {
+            if(isNaN(s)) return "0:00";
+            const mins = Math.floor(s / 60);
+            const secs = Math.floor(s % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
 
         async function api(action, payload = {}) {
@@ -319,9 +372,7 @@
                         </div>
                         <div>
                             <div class="font-bold text-gray-700">${name}</div>
-                            <div class="text-[10px] text-gray-400 flex items-center gap-1">
-                                <span class="text-yellow-500">👑</span> หัวห้อง: ${data.admin || 'System'}
-                            </div>
+                            <div class="text-[10px] text-gray-400">ห้องสนทนาทั่วไป</div>
                         </div>
                     </div>
                     <div class="text-pink-400 opacity-0 group-hover:opacity-100 transition-opacity">เข้าร่วม ➜</div>
@@ -372,43 +423,13 @@
             ];
         }
 
-        // 🔥 อัปเกรด updatePresence: ระบบหัวห้องอัตโนมัติ (แก้ไขจุดที่ 3)
         async function updatePresence() {
-            // ดึงข้อมูลห้องล่าสุดเพื่อให้แน่ใจว่า admin ตรงกัน
-            const rooms = await api('getRooms');
-            if (rooms && !rooms.error) {
-                roomRegistry = rooms;
-            }
-
             const users = await api('presence', { room: currentRoom, user: currentUsername });
             if(Array.isArray(users)) {
-                // 1. เช็คว่าหัวห้องปัจจุบันออนไลน์อยู่ไหม
-                const currentAdmin = roomRegistry[currentRoom]?.admin || 'System';
-                const adminOnline = users.some(u => u.name === currentAdmin);
-
-                // 2. ถ้าหัวห้องเป็น System หรือ หัวห้องไม่อยู่แล้ว
-                // 🔧 แก้จุดที่ 3: ป้องกัน override ถ้า local เราอัปเดตไปแล้ว
-                if (
-                   (currentAdmin === 'System' || !adminOnline) &&
-                   users.length > 0 &&
-                   actingAdmin === currentAdmin // 🔥 ป้องกัน override
-                ) {
-                    // 3. เรียงชื่อตามตัวอักษร ใครมาก่อน/ชื่อแรก รับสิทธิ์ไป
-                    const candidates = [...users].sort((a, b) => a.name.localeCompare(b.name));
-                    const newAdmin = candidates[0];
-
-                    // 4. ถ้าฉันคือคนคนนั้น ให้ฉันส่งคำสั่งตั้งตัวเองเป็นหัวห้อง
-                    if (newAdmin.name === currentUsername) {
-                        console.log("👑 หัวห้องไม่อยู่ รับสิทธิ์อัตโนมัติ");
-                        approveAdmin(currentUsername);
-                    }
-                }
-
                 document.getElementById('onlineCountBadge').textContent = users.length;
                 document.getElementById('userCountDetail').textContent = users.length;
-                const adminToShow = actingAdmin || 'System';
+                
                 document.getElementById('onlineUsersList').innerHTML = users.map(u => {
-                    const isAdmin = u.name === adminToShow;
                     const isMe = u.name === currentUsername;
                     return `
                         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-white shadow-sm">
@@ -420,114 +441,52 @@
                                     <div class="text-sm font-medium text-gray-700 flex items-center gap-1 text-left truncate">
                                         ${u.name} ${isMe ? '<span class="text-[9px] text-pink-400">(คุณ)</span>' : ''}
                                     </div>
-                                    ${isAdmin ? '<div class="text-[9px] text-yellow-600 font-bold">👑 หัวห้อง</div>' : ''}
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                ${isRealRoomAdmin() && !isMe ? `<button onclick="approveAdmin('${u.name}')" class="text-[9px] bg-yellow-100 text-yellow-600 px-2 py-1 rounded-full font-bold border border-yellow-200">โอนหัวห้อง</button>` : ''}
-                                <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0"></div>
-                            </div>
+                            <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0"></div>
                         </div>
                     `;
                 }).join('');
-                document.getElementById('requestAdminArea').classList.toggle('hidden', currentUsername === adminToShow);
             }
         }
 
         async function deleteMsg(id) {
             if (!confirm("ลบข้อความนี้?")) return;
-            const idString = String(id);
-            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:SYSTEM:DELETE:${idString}`, isSystem: true });
-            loadMessages();
-        }
-
-        async function requestAdminPrivilege() {
-            if(!confirm("ต้องการขอเป็นหัวห้องใช่หรือไม่?")) return;
-            const adminToShow = actingAdmin || 'System';
-            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:SYSTEM:REQ_ADMIN:${currentUsername}`, isSystem: true });
-            if (adminToShow === 'System' || adminToShow === '') {
-                await approveAdmin(currentUsername);
-                showToast("คุณเป็นหัวห้องแล้ว!");
-            } else {
-                showToast("ส่งคำขอแล้ว...");
-            }
-            closeModal('userModal');
-        }
-
-        // 🔧 แก้จุดที่ 2: อัปเดต actingAdmin ให้เร็วขึ้นทันที
-        async function approveAdmin(newAdminName) {
-            await api('setAdmin', { room: currentRoom, newAdmin: newAdminName });
-
-            // 🔥 บังคับอัปเดตทันที
-            actingAdmin = newAdminName;
-
-            await api('addMessage', { 
-                room: currentRoom, 
-                user: currentUsername, 
-                text: `CMD:SYSTEM:GRANT_ADMIN:${newAdminName}`, 
-                isSystem: true 
+            await api('addMessage', {
+                room: currentRoom,
+                user: currentUsername,
+                text: `CMD:SYSTEM:DELETE:${id}`,
+                isSystem: true
             });
-
-            // อัปเดต local registry ด้วยเพื่อความชัวร์
-            if (roomRegistry[currentRoom]) {
-                roomRegistry[currentRoom].admin = newAdminName;
-            }
-
-            showToast(`👑 ${newAdminName} เป็นหัวห้องแล้ว`);
             loadMessages();
-            updatePresence();
         }
 
         async function loadMessages() {
             if (!currentRoom) return;
-            actingAdmin = roomRegistry[currentRoom]?.admin || 'System';
+
             const msgs = await api('getMessages', { room: currentRoom });
-            if (Array.isArray(msgs)) {
-                // อัปเดต admin จากข้อความล่าสุด เผื่อ roomRegistry ยังไม่อัปเดต
-                const lastGrant = msgs.filter(m => m.text?.startsWith('CMD:SYSTEM:GRANT_ADMIN:')).pop();
-                if (lastGrant) {
-                   const newAdminFromMsg = lastGrant.text.split(':')[3];
-                   actingAdmin = newAdminFromMsg;
-                   if(roomRegistry[currentRoom]) roomRegistry[currentRoom].admin = newAdminFromMsg;
-                }
+            if (!Array.isArray(msgs)) return;
 
-                const deletedIds = msgs.filter(m => m.text?.startsWith('CMD:SYSTEM:DELETE:')).map(m => m.text.split(':')[3]);
-                document.getElementById('currentAdminName').textContent = actingAdmin;
-                const visibleMsgs = msgs.filter(m => {
-                    if (!m.id && !m.timestamp) return false;
-                    const idString = String(m.id || m.timestamp);
-                    const isDeleted = deletedIds.includes(idString);
-                    const isNormalSystem = m.isSystem && !m.text?.startsWith("CMD:");
-                    return !isDeleted && (!m.isSystem || isNormalSystem || m.text?.startsWith("CMD:SYSTEM:REQ_ADMIN:") || m.text?.startsWith("CMD:SYSTEM:GRANT_ADMIN:"));
-                });
-                const lastRadioCmd = visibleMsgs.filter(m => m.text?.startsWith('CMD:RADIO:')).pop();
-                
-                // 🔥 ลบเงื่อนไข lastRadioCmd.user !== currentUsername ออก เพื่อให้คนเข้าใหม่ (หรือรีเฟรช) ซิงค์เพลงเสมอ
-                if (lastRadioCmd) {
-                    syncRadioFromCommand(lastRadioCmd.text);
-                }
+            const deletedIds = msgs
+                .filter(m => typeof m.text === 'string' && m.text.startsWith('CMD:SYSTEM:DELETE:'))
+                .map(m => m.text.split(':')[3]);
 
-                if (JSON.stringify(visibleMsgs) !== JSON.stringify(messages)) {
-                    messages = visibleMsgs;
-                    renderMessages();
-                }
-            }
+            messages = msgs.filter(m => {
+                if (typeof m.text === 'string' && m.text.startsWith('CMD:')) return false;
+                return !deletedIds.includes(String(m.id));
+            });
+
+            renderMessages();
         }
 
         function renderMessages() {
             const list = document.getElementById('messagesList');
             list.innerHTML = messages.map(m => {
                 if(m.isSystem && !m.text.startsWith("CMD:")) return `<div class="text-center my-2 text-[10px] text-gray-400 uppercase font-bold">${m.text}</div>`;
-                if(m.text?.startsWith("CMD:SYSTEM:REQ_ADMIN:")) {
-                    const reqName = m.text.split(':')[3];
-                    return `<div class="flex justify-center my-3"><div class="bg-yellow-50 border border-yellow-200 rounded-2xl px-4 py-2 text-center shadow-sm"><div class="text-[10px] font-bold text-yellow-700 uppercase mb-1">📢 คำขอเป็นหัวห้อง</div><div class="text-xs text-gray-700"><b>${reqName}</b> อยากเป็นหัวห้อง</div>${isRealRoomAdmin() && actingAdmin !== 'System' ? `<button onclick="approveAdmin('${reqName}')" class="mt-2 bg-yellow-400 text-white px-4 py-1 rounded-full text-[10px] font-bold">อนุมัติสิทธิ์</button>` : ''}</div></div>`;
-                }
-                if(m.text?.startsWith("CMD:SYSTEM:GRANT_ADMIN:")) return `<div class="text-center my-3 text-[10px] text-pink-500 font-bold uppercase animate-pulse">👑 ${m.text.split(':')[3]} ได้รับแต่งตั้งเป็นหัวห้องแล้ว</div>`;
                 if(m.text?.startsWith("CMD:")) return '';
                 const isMe = m.user === currentUsername;
-                const isAdminMsg = m.user === actingAdmin;
-                const msgId = String(m.id || m.timestamp);
-                return `<div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up relative group"><div class="max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}">${!isMe ? `<span class="text-[10px] text-gray-400 mb-1 ml-1 flex items-center gap-1">${m.user} ${isAdminMsg ? '<span class="text-yellow-500">👑</span>' : ''}</span>` : ''}<div class="p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-pink-500 text-white rounded-br-sm' : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'}">${m.text || ''}${m.file ? `<img src="${m.file}" class="mt-2 rounded-lg max-h-40 w-full object-cover">` : ''}${isMe ? `<button onclick="deleteMsg('${msgId}')" class="absolute -top-2 -left-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow text-[10px] opacity-0 group-hover:opacity-100">🗑️</button>` : ''}</div></div></div>`;
+                const msgId = String(m.id);
+                return `<div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up relative group"><div class="max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}">${!isMe ? `<span class="text-[10px] text-gray-400 mb-1 ml-1 flex items-center gap-1">${m.user}</span>` : ''}<div class="p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-pink-500 text-white rounded-br-sm' : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'}">${m.text || ''}${m.file ? `<img src="${m.file}" class="mt-2 rounded-lg max-h-40 w-full object-cover">` : ''}${isMe ? `<button onclick="deleteMsg('${msgId}')" class="absolute -top-2 -left-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow text-[10px] opacity-0 group-hover:opacity-100">🗑️</button>` : ''}</div></div></div>`;
             }).join('');
             list.scrollTo(0, list.scrollHeight);
         }
@@ -551,30 +510,11 @@
             reader.readAsDataURL(file);
         }
 
-        function syncRadioFromCommand(cmd) {
-            const parts = cmd.split(':');
-            const action = parts[2];
-            const val = parts[3];
-            if (action === 'PLAY') {
-                const idx = parseInt(val);
-                if (musicState.playingIndex !== idx || !musicState.isPlaying) {
-                    musicState.playingIndex = idx;
-                    musicState.isPlaying = true;
-                    applyRadioState();
-                    if (!audioUnlocked) showToast("🎵 มีเพลงกำลังเล่นอยู่ กด ▶ เพื่อฟัง");
-                }
-            } else if (action === 'STOP') {
-                musicState.isPlaying = false;
-                applyRadioState();
-            }
-        }
-
         function applyRadioState() {
             const station = radioStations[musicState.playingIndex];
             if (!station) return;
             if (musicState.isPlaying) {
-                // สำหรับ Live Stream บังคับโหลดใหม่เพื่อให้เป็นปัจจุบันที่สุดเสมอ
-                if (audio.src !== station.src || station.src.startsWith('http')) {
+                if (audio.src !== station.src) {
                     audio.pause();
                     audio.src = station.src;
                     audio.load();
@@ -603,7 +543,6 @@
         }
 
         window.toggleMusicPlayback = async () => {
-            // REMOVED ADMIN CHECK HERE
             if (!audioUnlocked) {
                 try {
                     audio.muted = true;
@@ -615,22 +554,17 @@
             }
             musicState.isPlaying = !musicState.isPlaying;
             applyRadioState();
-            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:RADIO:${musicState.isPlaying ? 'PLAY' : 'STOP'}:${musicState.playingIndex}`, isSystem: true });
         };
 
         window.stopMusicPlayback = async () => {
-            // REMOVED ADMIN CHECK HERE
             musicState.isPlaying = false;
             applyRadioState();
-            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:RADIO:STOP:0`, isSystem: true });
         };
 
         window.changeTrackTo = async (idx) => {
-            // REMOVED ADMIN CHECK HERE
             musicState.playingIndex = idx;
             musicState.isPlaying = true;
             applyRadioState();
-            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:RADIO:PLAY:${idx}`, isSystem: true });
         };
 
         window.changeTrack = (dir) => {
@@ -671,9 +605,15 @@
 
         window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
         window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
-        window.leaveRoom = () => { 
+        window.leaveRoom = async () => { 
+            if (currentRoom) {
+                await api('leaveRoom', {
+                    room: currentRoom,
+                    user: currentUsername
+                });
+            }
             pollingIntervals.forEach(clearInterval); 
-            audio.pause(); audio.src=""; currentRoom = null; actingAdmin = 'System';
+            audio.pause(); audio.src=""; currentRoom = null;
             document.getElementById('chatView').classList.add('hidden'); 
             document.getElementById('lobbyView').classList.remove('hidden'); 
             fetchRooms(); 
