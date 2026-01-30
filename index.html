@@ -77,6 +77,14 @@
         </div>
     </div>
 
+    <!-- Image Viewer Modal (Zoomable) -->
+    <div id="imageViewerModal" class="hidden fixed inset-0 z-[300] bg-black/95 flex items-center justify-center overflow-hidden touch-none">
+        <button class="absolute top-4 right-4 text-white/80 hover:text-white text-4xl font-bold z-[310] p-2" onclick="closeImageViewer()">✕</button>
+        <div id="imageContainer" class="w-full h-full flex items-center justify-center overflow-hidden">
+            <img id="expandedImage" src="" class="max-w-full max-h-full object-contain transition-transform duration-100 origin-center" style="transform: scale(1) translate(0px, 0px);">
+        </div>
+    </div>
+
     <!-- ==================== LOBBY SCREEN ==================== -->
     <div id="lobbyView" class="w-full max-w-md p-6 flex flex-col h-full animate-slide-up">
         <div class="text-center mb-6 mt-6">
@@ -139,7 +147,6 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-                <!-- ปุ่มดูรหัสผ่านห้อง -->
                 <button onclick="showRoomPassword()" class="p-2 rounded-full border transition-all bg-yellow-50 border-yellow-100 text-yellow-500 hover:bg-yellow-100">
                     👁️
                 </button>
@@ -170,9 +177,17 @@
             </div>
         </div>
 
+        <!-- Emoji Picker Popup -->
+        <div id="emojiPicker" class="hidden absolute bottom-16 left-4 bg-white border border-gray-200 shadow-2xl rounded-2xl p-3 w-64 h-48 overflow-y-auto z-50 animate-slide-up">
+            <div class="emoji-grid" id="emojiList"></div>
+        </div>
+
         <!-- Input Area -->
         <div class="absolute bottom-0 w-full bg-white border-t p-3 z-40">
-            <div class="flex items-center gap-2 bg-gray-100 p-1.5 rounded-full border border-gray-200 shadow-inner">
+            <div class="flex items-center gap-2 bg-gray-100 p-1.5 rounded-full border border-gray-200 shadow-inner relative">
+                <button onclick="toggleEmojiPicker()" class="p-2 text-gray-400 hover:text-yellow-500 transition-colors">
+                    😀
+                </button>
                 <label class="p-2 text-gray-400 hover:text-blue-500 cursor-pointer">
                     📎 <input type="file" id="imageInput" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
                 </label>
@@ -305,6 +320,13 @@
             { title: "004 ฝากให้เขารัก - Yes'sir Days", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/004.mp3" }
         ];
 
+        // Emojis list
+        const emojis = [
+            "😀", "😂", "🥰", "😍", "😘", "😭", "😤", "😡", "😱", "👍", "👎", "👋", 
+            "🙏", "❤️", "💔", "🎉", "🔥", "✨", "🎵", "📷", "👻", "👽", "🤖", "💩",
+            "🐶", "🐱", "🐵", "🦄", "🌈", "⭐"
+        ];
+
         const audio = document.getElementById("mainAudio");
         const progressBar = document.getElementById('progressBar');
         const currentTimeDisplay = document.getElementById('currentTimeDisplay');
@@ -315,6 +337,104 @@
             console.error("❌ audio error", e);
             showToast("❌ โหลดไฟล์เพลงไม่สำเร็จ (Server อาจหลับ)");
         };
+
+        // Initialize Emoji Picker
+        const emojiList = document.getElementById('emojiList');
+        emojis.forEach(emoji => {
+            const btn = document.createElement('div');
+            btn.className = 'emoji-btn';
+            btn.textContent = emoji;
+            btn.onclick = () => addEmoji(emoji);
+            emojiList.appendChild(btn);
+        });
+
+        function toggleEmojiPicker() {
+            const picker = document.getElementById('emojiPicker');
+            picker.classList.toggle('hidden');
+        }
+
+        function addEmoji(emoji) {
+            const input = document.getElementById('messageInput');
+            input.value += emoji;
+            input.focus();
+            toggleEmojiPicker();
+        }
+
+        // Image Viewer Logic
+        function openImageViewer(src) {
+            const modal = document.getElementById('imageViewerModal');
+            const img = document.getElementById('expandedImage');
+            img.src = src;
+            img.style.transform = "scale(1) translate(0px, 0px)";
+            scale = 1;
+            panning = false;
+            pointX = 0;
+            pointY = 0;
+            start = { x: 0, y: 0 };
+            modal.classList.remove('hidden');
+        }
+
+        function closeImageViewer() {
+            document.getElementById('imageViewerModal').classList.add('hidden');
+        }
+
+        // Touch Zoom Logic
+        const imgContainer = document.getElementById('expandedImage');
+        let scale = 1, panning = false, pointX = 0, pointY = 0, start = { x: 0, y: 0 };
+
+        function setTransform() {
+            imgContainer.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+        }
+
+        imgContainer.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            start = { x: e.clientX - pointX, y: e.clientY - pointY };
+            panning = true;
+        });
+
+        imgContainer.addEventListener('mouseup', function(e) {
+            panning = false;
+        });
+
+        imgContainer.addEventListener('mousemove', function(e) {
+            e.preventDefault();
+            if (!panning) return;
+            pointX = (e.clientX - start.x);
+            pointY = (e.clientY - start.y);
+            setTransform();
+        });
+
+        imgContainer.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const xs = (e.clientX - pointX) / scale,
+                  ys = (e.clientY - pointY) / scale,
+                  delta = -e.deltaY;
+            
+            (delta > 0) ? (scale *= 1.2) : (scale /= 1.2);
+            pointX = e.clientX - xs * scale;
+            pointY = e.clientY - ys * scale;
+            setTransform();
+        });
+        
+        // Basic touch handling for mobile (Double tap to zoom)
+        let lastTap = 0;
+        imgContainer.addEventListener('touchend', function(e) {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < 500 && tapLength > 0) {
+                e.preventDefault();
+                if(scale === 1) {
+                    scale = 2;
+                } else {
+                    scale = 1;
+                    pointX = 0;
+                    pointY = 0;
+                }
+                setTransform();
+            }
+            lastTap = currentTime;
+        });
+
 
         // Time Update Listener
         audio.addEventListener('timeupdate', () => {
@@ -382,6 +502,41 @@
             if (rooms && !rooms.error) {
                 roomRegistry = rooms;
                 renderRoomList();
+                // After fetching rooms, fetch counts for each
+                fetchRoomCounts(Object.keys(rooms));
+            }
+        }
+
+        // New function to update counts and auto-delete empty rooms
+        async function fetchRoomCounts(roomNames) {
+            for (const room of roomNames) {
+                try {
+                    const users = await api('presence', { room: room });
+                    const count = Array.isArray(users) ? users.length : 0;
+                    
+                    const countEl = document.getElementById(`count-${room}`);
+                    const roomCard = document.getElementById(`room-card-${room}`);
+                    
+                    if (countEl) {
+                        countEl.innerHTML = `👤 ${count}`;
+                        if (count === 0) {
+                            countEl.classList.add('text-red-400');
+                            // AUTO CLEANUP GHOST ROOMS
+                            console.log(`Cleaning up ghost room: ${room}`);
+                            const savedPass = localStorage.getItem('chat_room_password') || '';
+                            const regPass = roomRegistry[room]?.password || '';
+                            const passToUse = regPass || savedPass;
+                            
+                            // 1. Call Delete API
+                            api('deleteRoom', { name: room, password: passToUse, user: 'system_cleanup' });
+                            
+                            // 2. Hide from UI immediately
+                            if(roomCard) roomCard.style.display = 'none';
+                        }
+                    }
+                } catch (e) {
+                    console.log('Error fetching count for', room);
+                }
             }
         }
 
@@ -394,6 +549,7 @@
                 if (!name.toLowerCase().includes(searchTerm)) return;
 
                 const el = document.createElement('div');
+                el.id = `room-card-${name}`; // Added ID for easy removal
                 el.className = 'bg-white/90 p-4 rounded-2xl border border-white shadow-sm flex items-center justify-between group cursor-pointer hover:bg-white transition-all relative';
                 el.innerHTML = `
                     <div class="flex items-center gap-3 text-left w-full" onclick="attemptJoinRoom({name: '${name}', ...${JSON.stringify(data).replace(/"/g, "&quot;") }})">
@@ -402,7 +558,10 @@
                         </div>
                         <div class="flex-grow">
                             <div class="font-bold text-gray-700">${name}</div>
-                            <div class="text-[10px] text-gray-400">ห้องสนทนาทั่วไป</div>
+                            <div class="flex justify-between items-center pr-2">
+                                <div class="text-[10px] text-gray-400">ห้องสนทนาทั่วไป</div>
+                                <div id="count-${name}" class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">...</div>
+                            </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -544,7 +703,12 @@
                 const isMe = m.user === currentUsername;
                 const msgId = String(m.id || "");
                 
-                return `<div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up relative group"><div class="max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}">${!isMe ? `<span class="text-[10px] text-gray-400 mb-1 ml-1 flex items-center gap-1">${m.user}</span>` : ''}<div class="p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-pink-500 text-white rounded-br-sm' : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'}">${m.text || ''}${m.file ? `<img src="${m.file}" class="mt-2 rounded-lg max-h-40 w-full object-cover">` : ''}${isMe ? `<button onclick="deleteMsg('${msgId}')" class="absolute -top-2 -left-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow text-[10px] opacity-60 hover:opacity-100 transition-opacity">🗑️</button>` : ''}</div></div></div>`;
+                // Add cursor-pointer and onclick to image
+                const imageHtml = m.file ? 
+                    `<img src="${m.file}" class="mt-2 rounded-lg max-h-40 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity" onclick="openImageViewer('${m.file}')">` 
+                    : '';
+
+                return `<div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up relative group"><div class="max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}">${!isMe ? `<span class="text-[10px] text-gray-400 mb-1 ml-1 flex items-center gap-1">${m.user}</span>` : ''}<div class="p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-pink-500 text-white rounded-br-sm' : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'}">${m.text || ''}${imageHtml}${isMe ? `<button onclick="deleteMsg('${msgId}')" class="absolute -top-2 -left-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow text-[10px] opacity-60 hover:opacity-100 transition-opacity">🗑️</button>` : ''}</div></div></div>`;
             }).join('');
             list.scrollTo(0, list.scrollHeight);
         }
@@ -576,12 +740,18 @@
                 if (audio.src !== station.src) {
                     showToast("🎵 กำลังโหลดเพลง... (รอสักครู่)");
                     audio.src = station.src;
-                    audio.load();
+                    // Removed redundant audio.load() to let the browser handle the new src
                 }
                 
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(error => {
+                        // Ignore AbortError caused by rapid track switching
+                        if (error.name === 'AbortError' || error.message.includes('interrupted')) {
+                            console.log("Play request interrupted (likely track switch)");
+                            return; 
+                        }
+                        
                         console.error("Play error:", error);
                         musicState.isPlaying = false;
                         updateRadioUI();
@@ -716,6 +886,23 @@
             // Refresh lobby
             fetchRooms();
         };
+        
+        // Add tab close listener
+        window.addEventListener('beforeunload', () => {
+            if(currentRoom) {
+                // Best effort to leave
+                const roomPassword = currentRoomPassword;
+                const roomToLeave = currentRoom;
+                
+                // Use navigator.sendBeacon if possible for reliable background send
+                // Since our API expects POST body JSON, we try a simple fetch with keepalive first
+                // Note: Standard fetch keepalive is best for modern browsers
+                api('leaveRoom', { room: roomToLeave, user: currentUsername });
+                
+                // Note: Deleting room on unload is risky because we can't await checking count
+                // Rely on the next person who loads lobby to clean it up via fetchRoomCounts logic
+            }
+        });
         
         window.togglePlayerModal = () => { openModal('musicModal'); renderRadioList(); };
         window.toggleUserListModal = () => { openModal('userModal'); updatePresence(); };
