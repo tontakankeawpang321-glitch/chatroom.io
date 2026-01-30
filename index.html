@@ -75,6 +75,18 @@
             transition: background 0.2s;
         }
         .emoji-btn:hover { background: #f3f4f6; }
+
+        /* Bottom Nav Styling */
+        .bottom-nav-active {
+            color: #ec4899;
+        }
+        .bottom-nav-active .icon-container {
+            filter: drop-shadow(0 4px 6px rgba(236, 72, 153, 0.3));
+            transform: scale(1.1) translateY(-2px);
+        }
+        .icon-container {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center">
@@ -99,53 +111,136 @@
     </div>
 
     <!-- ==================== LOBBY SCREEN ==================== -->
-    <div id="lobbyView" class="w-full max-w-md p-6 flex flex-col h-full animate-slide-up">
-        <div class="text-center mb-6 mt-6">
-            <div id="avatarContainer" class="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl border-4 border-white overflow-hidden">
-                <img id="userAvatar" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Chat" alt="Avatar" class="w-20 h-20">
+    <div id="lobbyView" class="w-full max-w-md h-full flex flex-col bg-slate-50 relative overflow-hidden animate-slide-up">
+        
+        <!-- Header Section -->
+        <div class="p-6 text-center bg-white border-b border-gray-100 shadow-sm shrink-0">
+            <div id="avatarContainer" class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg border-4 border-white overflow-hidden transition-transform active:scale-95">
+                <img id="userAvatar" src="https://api.dicebear.com/7.x/big-smile/svg?seed=Chat" alt="Avatar" class="w-16 h-16">
             </div>
-            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">Chatroom</h1>
-            <p class="text-gray-600 text-sm mt-1">📻 ฟังเพลงแบบส่วนตัว</p>
+            <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">Chatroom</h1>
+            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Happy Messaging</p>
         </div>
 
-        <div class="bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/50 space-y-4">
-            <div class="space-y-1">
-                <label class="text-xs font-bold text-gray-400 uppercase ml-1">ชื่อเล่นของคุณ</label>
-                <input type="text" id="usernameInput" placeholder="ตั้งชื่อเล่น..." 
-                    class="w-full bg-white border border-gray-100 rounded-2xl py-3 px-4 outline-none focus:ring-2 focus:ring-pink-200 transition-all shadow-inner">
-            </div>
+        <!-- Main Content Area (Tabs) -->
+        <div id="lobbyContent" class="flex-grow overflow-y-auto p-4 custom-scroll pb-24">
+            
+            <!-- Tab 1: Create Room (หน้าแรก) -->
+            <div id="tabCreate" class="space-y-6">
+                <!-- ตั้งค่าโปรไฟล์ -->
+                <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center gap-3">
+                        <div class="w-8 h-8">
+                            <svg viewBox="0 0 100 100" class="w-full h-full">
+                                <circle cx="50" cy="50" r="45" fill="#f0f9ff"/>
+                                <circle cx="50" cy="40" r="15" fill="#0ea5e9"/>
+                                <path d="M25 80 Q50 60 75 80" stroke="#0ea5e9" stroke-width="8" fill="none" stroke-linecap="round"/>
+                                <circle cx="45" cy="38" r="2" fill="white"/>
+                                <circle cx="55" cy="38" r="2" fill="white"/>
+                            </svg>
+                        </div>
+                        <span>ตั้งค่าโปรไฟล์</span>
+                    </h2>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ชื่อเล่นของคุณ</label>
+                        <input type="text" id="usernameInput" placeholder="กรอกชื่อเล่น..." 
+                            class="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 outline-none focus:ring-2 focus:ring-pink-200 transition-all shadow-inner">
+                    </div>
+                </div>
 
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="openModal('createRoomModal')" class="bg-gradient-to-br from-pink-400 to-rose-400 text-white p-4 rounded-2xl font-bold flex flex-col items-center gap-1 shadow-lg active:scale-95 transition-transform">
-                    <span class="text-xl">➕</span>
-                    <span>สร้างห้อง</span>
-                </button>
-                <button onclick="fetchRooms(true)" class="bg-white text-gray-600 p-4 rounded-2xl font-bold flex flex-col items-center gap-1 border border-gray-100 shadow-md active:scale-95 transition-transform">
-                    <span class="text-xl text-blue-400">🔄</span>
-                    <span>รีเฟรช</span>
-                </button>
-            </div>
-        </div>
+                <!-- ข้อมูลห้องใหม่ -->
+                <div class="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-5">
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center gap-3">
+                        <div class="w-8 h-8">
+                            <svg viewBox="0 0 100 100" class="w-full h-full">
+                                <circle cx="50" cy="50" r="45" fill="#fff1f2"/>
+                                <path d="M30 50 L50 30 L70 50" stroke="#f43f5e" stroke-width="8" fill="none" stroke-linecap="round"/>
+                                <path d="M50 35 V75" stroke="#f43f5e" stroke-width="8" stroke-linecap="round"/>
+                                <circle cx="40" cy="55" r="3" fill="#f43f5e"/>
+                                <circle cx="60" cy="55" r="3" fill="#f43f5e"/>
+                                <path d="M45 68 Q50 72 55 68" fill="none" stroke="#f43f5e" stroke-width="3" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <span>สร้างห้องใหม่</span>
+                    </h2>
+                    
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ชื่อห้อง</label>
+                        <input id="newRoomName" class="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 outline-none focus:ring-2 focus:ring-pink-200" placeholder="ตั้งชื่อห้องของคุณ...">
+                    </div>
 
-        <div class="mt-6 flex-grow overflow-hidden flex flex-col">
-            <div class="px-2 mb-2">
-                <div class="relative">
-                    <input id="searchRoomInput" oninput="renderRoomList()" placeholder="🔍 ค้นหาห้อง..." class="w-full bg-white/50 border border-white/50 rounded-xl py-2 px-4 pl-10 text-sm outline-none focus:bg-white transition-all">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ประเภทห้อง</label>
+                        <div class="flex gap-2">
+                            <button onclick="setNewRoomType('public')" id="typePublicBtn" class="flex-1 p-3 rounded-2xl text-xs font-bold bg-pink-100 text-pink-500 border-2 border-pink-400 transition-all">🔓 สาธารณะ</button>
+                            <button onclick="setNewRoomType('private')" id="typePrivateBtn" class="flex-1 p-3 rounded-2xl text-xs font-bold bg-gray-50 text-gray-400 border-2 border-transparent transition-all">🔒 ส่วนตัว</button>
+                        </div>
+                    </div>
+
+                    <div id="newRoomPassContainer" class="hidden space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">รหัสผ่านห้อง</label>
+                        <input id="newRoomPass" class="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 outline-none" placeholder="กำหนดรหัสผ่าน..." type="password">
+                    </div>
+
+                    <button onclick="createRoom()" class="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-400 text-white rounded-2xl font-bold shadow-lg shadow-pink-200 active:scale-95 transition-all">
+                        🚀 สร้างห้องทันที
+                    </button>
                 </div>
             </div>
-            <h3 class="text-xs font-bold text-gray-500 uppercase px-2 mb-2 flex justify-between items-center">
-                <span>ห้องที่เปิดอยู่</span>
-                <span id="connectionStatus" class="text-[10px] text-gray-400 font-normal">รอการเชื่อมต่อ...</span>
-            </h3>
-            <div id="roomsList" class="flex-grow overflow-y-auto space-y-3 pr-1 custom-scroll">
-                <div class="text-center py-10 text-gray-400 text-sm italic">กำลังโหลดรายการห้อง...</div>
+
+            <!-- Tab 2: Active Rooms -->
+            <div id="tabRooms" class="hidden animate-slide-up space-y-4">
+                <div class="relative">
+                    <input id="searchRoomInput" oninput="renderRoomList()" placeholder="🔍 ค้นหาห้อง..." class="w-full bg-white border border-gray-200 rounded-2xl py-3 px-4 pl-10 text-sm outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-300 transition-all shadow-sm">
+                </div>
+
+                <div class="flex justify-between items-center px-1">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase">ห้องทั้งหมด</h3>
+                    <button onclick="fetchRooms(true)" class="text-[10px] font-bold text-blue-500 hover:text-blue-600">🔄 รีเฟรช</button>
+                </div>
+
+                <div id="roomsList" class="space-y-3">
+                    <div class="text-center py-10 text-gray-400 text-sm italic">กำลังโหลดรายการห้อง...</div>
+                </div>
             </div>
+
+        </div>
+
+        <!-- Bottom Navigation Bar -->
+        <div class="absolute bottom-0 w-full h-20 bg-white border-t border-gray-100 flex items-center justify-around px-6 pb-2 z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+            <!-- สร้างห้อง -->
+            <button onclick="switchLobbyTab('create')" id="navCreateBtn" class="flex flex-col items-center gap-1 bottom-nav-active transition-all">
+                <div class="icon-container w-10 h-10">
+                    <svg viewBox="0 0 100 100" class="w-full h-full">
+                        <circle cx="50" cy="50" r="45" fill="#fce4ec"/>
+                        <path d="M50 30 v40 M30 50 h40" stroke="#ec4899" stroke-width="8" stroke-linecap="round"/>
+                        <circle cx="38" cy="45" r="3" fill="#ec4899"/>
+                        <circle cx="62" cy="45" r="3" fill="#ec4899"/>
+                        <path d="M42 62 Q50 70 58 62" fill="none" stroke="#ec4899" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="text-[10px] font-bold">สร้างห้อง</span>
+            </button>
+            
+            <!-- ห้องทั้งหมด -->
+            <button onclick="switchLobbyTab('rooms')" id="navRoomsBtn" class="flex flex-col items-center gap-1 text-gray-400 transition-all">
+                <div class="icon-container w-10 h-10">
+                    <svg viewBox="0 0 100 100" class="w-full h-full">
+                        <circle cx="50" cy="50" r="45" fill="#e0f2fe"/>
+                        <path d="M30 60 L50 40 L70 60 V75 H30 Z" fill="#0ea5e9"/>
+                        <path d="M25 60 L50 35 L75 60" fill="none" stroke="#0284c7" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="44" cy="55" r="2.5" fill="white"/>
+                        <circle cx="56" cy="55" r="2.5" fill="white"/>
+                        <path d="M45 65 Q50 69 55 65" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="text-[10px] font-bold">ห้องทั้งหมด</span>
+            </button>
         </div>
     </div>
 
     <!-- ==================== CHAT SCREEN ==================== -->
     <div id="chatView" class="hidden w-full max-w-lg bg-slate-50 h-full flex flex-col shadow-2xl relative">
-        <!-- Header -->
         <div class="h-16 flex items-center justify-between px-4 bg-white border-b border-gray-100 z-30 shadow-sm">
             <div class="flex items-center gap-3 overflow-hidden text-left">
                 <button onclick="leaveRoom()" class="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0">
@@ -159,26 +254,18 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-                <button onclick="showRoomPassword()" class="p-2 rounded-full border transition-all bg-yellow-50 border-yellow-100 text-yellow-500 hover:bg-yellow-100">
-                    👁️
-                </button>
-                <button id="musicToggleBtn" onclick="togglePlayerModal()" class="p-2 rounded-full border transition-all bg-gray-50 border-gray-100 text-gray-400 hover:text-pink-500 hover:border-pink-200">
-                    📻
-                </button>
-                <button onclick="toggleUserListModal()" class="p-2 bg-blue-50 border border-blue-100 rounded-full text-blue-500 relative">
-                    👥 <span id="onlineCountBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border border-white font-bold">0</span>
-                </button>
+                <button onclick="showRoomPassword()" class="p-2 rounded-full border transition-all bg-yellow-50 border-yellow-100 text-yellow-500 hover:bg-yellow-100">👁️</button>
+                <button id="musicToggleBtn" onclick="togglePlayerModal()" class="p-2 rounded-full border transition-all bg-gray-50 border-gray-100 text-gray-400 hover:text-pink-500 hover:border-pink-200">📻</button>
+                <button onclick="toggleUserListModal()" class="p-2 bg-blue-50 border border-blue-100 rounded-full text-blue-500 relative">👥 <span id="onlineCountBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border border-white font-bold">0</span></button>
             </div>
         </div>
 
-        <!-- รายการข้อความ -->
         <div id="messagesList" class="flex-grow overflow-y-auto p-4 space-y-4 custom-scroll pb-24 text-left"></div>
 
-        <!-- Mini Player -->
         <div id="miniPlayer" class="hidden absolute bottom-20 left-4 right-4 bg-white/90 backdrop-blur-md rounded-2xl p-2 flex items-center justify-between border border-pink-100 shadow-lg z-20 animate-slide-up">
-            <div class="flex items-center gap-3 overflow-hidden">
+            <div class="flex items-center gap-3 overflow-hidden text-left">
                 <div id="miniDisc" class="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-xs flex-shrink-0">🎵</div>
-                <div class="overflow-hidden text-left">
+                <div class="overflow-hidden">
                     <div id="miniSongTitle" class="text-[10px] font-bold text-gray-800 truncate">Song Name</div>
                     <div id="miniSongArtist" class="text-[9px] text-red-500 flex items-center"><span class="live-dot animate-pulse"></span> NOW PLAYING</div>
                 </div>
@@ -189,52 +276,27 @@
             </div>
         </div>
 
-        <!-- Emoji Picker Popup -->
         <div id="emojiPicker" class="hidden absolute bottom-16 left-4 bg-white border border-gray-200 shadow-2xl rounded-2xl p-3 w-64 h-48 overflow-y-auto z-50 animate-slide-up">
             <div class="emoji-grid" id="emojiList"></div>
         </div>
 
-        <!-- Input Area -->
         <div class="absolute bottom-0 w-full bg-white border-t p-3 z-40">
             <div class="flex items-center gap-2 bg-gray-100 p-1.5 rounded-full border border-gray-200 shadow-inner relative">
-                <button onclick="toggleEmojiPicker()" class="p-2 text-gray-400 hover:text-yellow-500 transition-colors">
-                    😀
-                </button>
+                <button onclick="toggleEmojiPicker()" class="p-2 text-gray-400 hover:text-yellow-500 transition-colors">😀</button>
                 <label class="p-2 text-gray-400 hover:text-blue-500 cursor-pointer">
                     📎 <input type="file" id="imageInput" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
                 </label>
                 <input id="messageInput" class="bg-transparent flex-grow outline-none text-sm px-2 text-gray-700" placeholder="พิมพ์ข้อความ..." onkeypress="if(event.key==='Enter') sendMessage()">
-                <button onclick="sendMessage()" class="bg-gradient-to-r from-pink-500 to-rose-400 text-white p-2.5 rounded-full shadow-md active:scale-90 transition-transform">
-                    🚀
-                </button>
+                <button onclick="sendMessage()" class="bg-gradient-to-r from-pink-500 to-rose-400 text-white p-2.5 rounded-full shadow-md active:scale-90 transition-transform">🚀</button>
             </div>
         </div>
     </div>
 
-    <!-- Create Room Modal -->
-    <div id="createRoomModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-        <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-4">
-            <h2 class="text-xl font-bold text-center text-gray-800">สร้างห้องใหม่</h2>
-            <input id="newRoomName" class="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 outline-none" placeholder="ชื่อห้อง...">
-            <div class="flex gap-2">
-                <button onclick="setNewRoomType('public')" id="typePublicBtn" class="flex-1 p-2 rounded-xl text-xs font-bold bg-pink-100 text-pink-500 border-2 border-pink-400">สาธารณะ</button>
-                <button onclick="setNewRoomType('private')" id="typePrivateBtn" class="flex-1 p-2 rounded-xl text-xs font-bold bg-gray-50 text-gray-400">ส่วนตัว</button>
-            </div>
-            <input id="newRoomPass" class="hidden w-full bg-gray-50 border border-gray-100 rounded-xl p-3 outline-none" placeholder="รหัสผ่าน..." type="password">
-            <div class="flex gap-2 pt-4">
-                <button onclick="closeModal('createRoomModal')" class="flex-1 py-3 text-gray-400 font-bold">ยกเลิก</button>
-                <button onclick="createRoom()" class="flex-1 py-3 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-xl font-bold shadow-lg">สร้าง</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Music Player Modal -->
-    <div id="musicModal" class="hidden fixed inset-0 bg-white/95 backdrop-blur-xl z-50 flex flex-col">
+    <!-- Modals -->
+    <div id="musicModal" class="hidden fixed inset-0 bg-white/95 backdrop-blur-xl z-[150] flex flex-col">
         <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <button onclick="closeModal('musicModal')" class="text-gray-400 p-1 text-2xl">✕</button>
-            <span class="text-xs font-bold text-pink-500 uppercase tracking-widest bg-pink-50 px-4 py-1.5 rounded-full">
-                MUSIC PLAYLIST
-            </span>
+            <span class="text-xs font-bold text-pink-500 uppercase tracking-widest bg-pink-50 px-4 py-1.5 rounded-full">MUSIC PLAYLIST</span>
             <div class="w-6"></div>
         </div>
         <div class="flex-grow p-6 flex flex-col items-center justify-center space-y-6 overflow-y-auto custom-scroll">
@@ -242,47 +304,36 @@
                 <div class="w-12 h-12 bg-pink-500 rounded-full flex items-center justify-center text-white font-black text-[10px]">MUSIC</div>
                 <div class="absolute w-2 h-2 bg-white rounded-full"></div>
             </div>
-            
             <div class="text-center w-full max-w-[280px]">
                 <h2 id="playerSongTitle" class="text-xl font-bold text-gray-800 truncate">เลือกเพลง</h2>
                 <p id="playerSongArtist" class="text-red-500 text-xs font-bold flex items-center justify-center mt-1"><span class="live-dot animate-pulse"></span> NOW PLAYING</p>
             </div>
-
             <div class="w-full max-w-[280px] space-y-1">
                 <input type="range" id="progressBar" min="0" max="100" value="0" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500">
-                <div class="flex justify-between text-[10px] text-gray-400 font-bold">
-                    <span id="currentTimeDisplay">0:00</span>
-                    <span id="durationDisplay">0:00</span>
-                </div>
+                <div class="flex justify-between text-[10px] text-gray-400 font-bold"><span id="currentTimeDisplay">0:00</span><span id="durationDisplay">0:00</span></div>
             </div>
-
             <div class="flex items-center gap-6">
                 <button onclick="changeTrack(-1)" class="text-gray-400 hover:text-pink-500 text-2xl transition-colors">⏮</button>
                 <button onclick="stopMusicPlayback()" class="w-12 h-12 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center text-xl shadow hover:bg-gray-200 transition-all font-bold">■</button>
                 <button id="playerPlayBtn" onclick="toggleMusicPlayback()" class="w-16 h-16 bg-gradient-to-tr from-pink-500 to-rose-400 rounded-full flex items-center justify-center text-white text-2xl shadow-xl active:scale-90 transition-all">▶</button>
                 <button onclick="changeTrack(1)" class="text-gray-400 hover:text-pink-500 text-2xl transition-colors">⏭</button>
             </div>
-
-            <div class="w-full max-w-sm space-y-3">
-                <div id="playlistContainer" class="w-full space-y-2 max-h-64 overflow-y-auto custom-scroll px-2 border-t pt-3 text-left"></div>
-            </div>
+            <div id="playlistContainer" class="w-full max-w-sm space-y-2 max-h-64 overflow-y-auto custom-scroll px-2 border-t pt-3"></div>
         </div>
     </div>
 
-    <!-- User List Modal -->
-    <div id="userModal" class="hidden fixed inset-0 bg-black/50 z-50 flex justify-center items-end p-4">
+    <div id="userModal" class="hidden fixed inset-0 bg-black/50 z-[150] flex justify-center items-end p-4 text-left">
         <div class="bg-white w-full rounded-3xl p-6 shadow-2xl space-y-4 max-h-[60%] overflow-y-auto">
-            <div class="flex justify-between items-center border-b pb-2 text-left">
+            <div class="flex justify-between items-center border-b pb-2">
                 <h3 class="font-bold text-gray-800">ผู้อยู่ในห้อง (<span id="userCountDetail">0</span>)</h3>
                 <button onclick="closeModal('userModal')" class="text-gray-400 text-xl font-bold">✕</button>
             </div>
-            <div id="onlineUsersList" class="space-y-2 pt-2 text-left"></div>
+            <div id="onlineUsersList" class="space-y-2 pt-2"></div>
         </div>
     </div>
 
-    <!-- Password Prompt Modal for JOIN -->
-    <div id="passwordPromptModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-        <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-6 animate-slide-up text-center">
+    <div id="passwordPromptModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-6 text-center">
+        <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-6 animate-slide-up">
             <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto text-2xl">🔒</div>
             <h2 class="text-xl font-bold text-gray-800">กรุณาใส่รหัสผ่าน</h2>
             <input id="joinRoomPasswordInput" type="password" class="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 outline-none text-center text-lg tracking-widest font-bold" placeholder="••••••">
@@ -293,17 +344,20 @@
         </div>
     </div>
 
-    <!-- Show Password Modal -->
-    <div id="showPasswordModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-6">
-        <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-6 animate-slide-up text-center border-4 border-yellow-100">
+    <div id="showPasswordModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-6 text-center">
+        <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-6 animate-slide-up border-4 border-yellow-100">
             <div class="w-16 h-16 bg-yellow-100 text-yellow-500 rounded-full flex items-center justify-center mx-auto text-2xl">🔑</div>
             <h2 class="text-xl font-bold text-gray-800">รหัสผ่านห้องนี้</h2>
-            <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <div id="displayRoomPassword" class="text-2xl font-bold text-gray-700 tracking-widest"></div>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="closeModal('showPasswordModal')" class="flex-1 py-3 bg-yellow-400 text-white rounded-xl font-bold shadow-md hover:bg-yellow-500">ตกลง</button>
-            </div>
+            <div id="displayRoomPassword" class="bg-gray-50 rounded-xl p-4 border border-gray-100 text-2xl font-bold text-gray-700 tracking-widest"></div>
+            <button onclick="closeModal('showPasswordModal')" class="w-full py-3 bg-yellow-400 text-white rounded-xl font-bold shadow-md hover:bg-yellow-500">ตกลง</button>
+        </div>
+    </div>
+
+    <div id="deleteConfirmModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[300] flex items-center justify-center p-6 text-center">
+        <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-6 animate-slide-up">
+            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl">🗑️</div>
+            <div><h2 class="text-xl font-bold text-gray-800">ยืนยันการลบ</h2><p class="text-gray-500 text-sm mt-1">คุณแน่ใจหรือไม่ว่าต้องการลบข้อความนี้?</p></div>
+            <div class="flex gap-3"><button onclick="closeModal('deleteConfirmModal')" class="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-bold hover:bg-gray-200 transition-colors">ยกเลิก</button><button id="confirmDeleteBtn" class="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-md hover:bg-red-600 transition-colors">ลบทันที</button></div>
         </div>
     </div>
     
@@ -312,7 +366,6 @@
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbzmXBYSGjjmnsLCcqHGcf0KrpHjt__dPcOnusfqibZrhnqRyCNWRalsU50EOlzwH3BtuQ/exec';
 
-        // State Management
         let currentUsername = localStorage.getItem('chat_username') || '';
         let currentRoom = null;
         let currentRoomPassword = ''; 
@@ -320,6 +373,8 @@
         let messages = [];
         let pollingIntervals = [];
         let musicState = { playingIndex: 0, isPlaying: false };
+        let msgToDeleteId = null;
+        let currentLobbyTab = 'create';
         
         let radioStations = [
             { title: "001 ใจฉันตามเธอไป - YOUNGOHM", src: "https://drive-music-server.onrender.com/music/001.mp3" },
@@ -329,40 +384,30 @@
         ];
 
         const emojis = ["😀", "😂", "🥰", "😍", "😘", "😭", "😤", "😡", "😱", "👍", "👎", "👋", "🙏", "❤️", "🎉", "🔥", "✨", "🎵", "📷", "👻"];
-
         const audio = document.getElementById("mainAudio");
         const progressBar = document.getElementById('progressBar');
         const currentTimeDisplay = document.getElementById('currentTimeDisplay');
         const durationDisplay = document.getElementById('durationDisplay');
         
-        // Initialize Emoji Picker
         const emojiList = document.getElementById('emojiList');
         emojis.forEach(emoji => {
             const btn = document.createElement('div');
-            btn.className = 'emoji-btn';
-            btn.textContent = emoji;
-            btn.onclick = () => addEmoji(emoji);
-            emojiList.appendChild(btn);
+            btn.className = 'emoji-btn'; btn.textContent = emoji;
+            btn.onclick = () => addEmoji(emoji); emojiList.appendChild(btn);
         });
 
         function toggleEmojiPicker() { document.getElementById('emojiPicker').classList.toggle('hidden'); }
-        function addEmoji(emoji) {
-            const input = document.getElementById('messageInput');
-            input.value += emoji; input.focus(); toggleEmojiPicker();
-        }
+        function addEmoji(emoji) { const input = document.getElementById('messageInput'); input.value += emoji; input.focus(); toggleEmojiPicker(); }
 
-        // Image Viewer
         let scale = 1, panning = false, pointX = 0, pointY = 0, start = { x: 0, y: 0 };
         function openImageViewer(src) {
             const modal = document.getElementById('imageViewerModal');
             const img = document.getElementById('expandedImage');
             img.src = src; img.style.transform = "scale(1) translate(0px, 0px)";
-            scale = 1; pointX = 0; pointY = 0;
-            modal.classList.remove('hidden');
+            scale = 1; pointX = 0; pointY = 0; modal.classList.remove('hidden');
         }
         function closeImageViewer() { document.getElementById('imageViewerModal').classList.add('hidden'); }
 
-        // Audio Listeners
         audio.addEventListener('timeupdate', () => {
             if(!audio.duration) return;
             progressBar.value = (audio.currentTime / audio.duration) * 100;
@@ -370,17 +415,10 @@
         });
         audio.addEventListener('loadedmetadata', () => durationDisplay.textContent = formatTime(audio.duration));
         audio.addEventListener('ended', () => changeTrack(1));
-        progressBar.addEventListener('input', (e) => {
-            if(audio.duration) audio.currentTime = (e.target.value / 100) * audio.duration;
-        });
+        progressBar.addEventListener('input', (e) => { if(audio.duration) audio.currentTime = (e.target.value / 100) * audio.duration; });
 
-        function formatTime(s) {
-            if(isNaN(s)) return "0:00";
-            const m = Math.floor(s / 60), sec = Math.floor(s % 60);
-            return `${m}:${sec < 10 ? '0' : ''}${sec}`;
-        }
+        function formatTime(s) { if(isNaN(s)) return "0:00"; const m = Math.floor(s / 60), sec = Math.floor(s % 60); return `${m}:${sec < 10 ? '0' : ''}${sec}`; }
 
-        // API Core
         async function api(action, payload = {}) {
             try {
                 const r = await fetch(API_URL, {
@@ -403,11 +441,7 @@
             if(showLoader) toggleLoading(true);
             const rooms = await api('getRooms');
             if(showLoader) toggleLoading(false);
-            if (rooms && !rooms.error) {
-                roomRegistry = rooms;
-                renderRoomList();
-                fetchRoomCounts(Object.keys(rooms));
-            }
+            if (rooms && !rooms.error) { roomRegistry = rooms; renderRoomList(); fetchRoomCounts(Object.keys(rooms)); }
         }
 
         async function fetchRoomCounts(roomNames) {
@@ -417,26 +451,43 @@
             }
         }
 
+        function switchLobbyTab(tab) {
+            currentLobbyTab = tab;
+            const tabRooms = document.getElementById('tabRooms');
+            const tabCreate = document.getElementById('tabCreate');
+            const navRoomsBtn = document.getElementById('navRoomsBtn');
+            const navCreateBtn = document.getElementById('navCreateBtn');
+
+            if (tab === 'create') {
+                tabCreate.classList.remove('hidden'); tabRooms.classList.add('hidden');
+                navCreateBtn.classList.add('bottom-nav-active'); navCreateBtn.classList.remove('text-gray-400');
+                navRoomsBtn.classList.remove('bottom-nav-active'); navRoomsBtn.classList.add('text-gray-400');
+            } else {
+                tabRooms.classList.remove('hidden'); tabCreate.classList.add('hidden');
+                navRoomsBtn.classList.add('bottom-nav-active'); navRoomsBtn.classList.remove('text-gray-400');
+                navCreateBtn.classList.remove('bottom-nav-active'); navCreateBtn.classList.add('text-gray-400');
+                fetchRooms();
+            }
+        }
+
         function renderRoomList() {
             const list = document.getElementById('roomsList');
             const search = document.getElementById('searchRoomInput').value.toLowerCase();
             list.innerHTML = '';
-            Object.entries(roomRegistry).forEach(([name, data]) => {
+            const roomsArray = Object.entries(roomRegistry);
+            if (roomsArray.length === 0) { list.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm italic">ไม่มีห้องที่เปิดอยู่ตอนนี้</div>`; return; }
+            roomsArray.forEach(([name, data]) => {
                 if (!name.toLowerCase().includes(search)) return;
-                const el = document.createElement('div');
-                el.id = `room-card-${name}`;
-                el.className = 'bg-white/90 p-4 rounded-2xl border border-white shadow-sm flex items-center justify-between group cursor-pointer hover:bg-white transition-all';
+                const el = document.createElement('div'); el.id = `room-card-${name}`;
+                el.className = 'bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between group cursor-pointer hover:bg-gray-50 transition-all active:scale-[0.98]';
                 el.innerHTML = `
                     <div class="flex items-center gap-3 text-left w-full" onclick='attemptJoinRoom(${JSON.stringify({name, ...data}).replace(/'/g, "&#39;")})'>
-                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner ${data.type === 'private' ? 'bg-orange-50 text-orange-400' : 'bg-blue-50 text-blue-400'}">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-inner ${data.type === 'private' ? 'bg-orange-50 text-orange-400' : 'bg-pink-50 text-pink-500'}">
                             ${data.type === 'private' ? '🔒' : '#'}
                         </div>
                         <div class="flex-grow">
-                            <div class="font-bold text-gray-700">${name}</div>
-                            <div class="flex justify-between items-center pr-2">
-                                <div class="text-[10px] text-gray-400">ห้องสนทนาทั่วไป</div>
-                                <div id="count-${name}" class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">...</div>
-                            </div>
+                            <div class="font-bold text-gray-800">${name}</div>
+                            <div class="flex justify-between items-center pr-2"><div class="text-[10px] text-gray-400 font-bold uppercase">Room</div><div id="count-${name}" class="text-xs font-bold text-pink-500 bg-pink-50 px-2 py-0.5 rounded-full">👤 0</div></div>
                         </div>
                     </div>
                 `;
@@ -444,69 +495,49 @@
             });
         }
 
-        function showRoomPassword() {
-            document.getElementById('displayRoomPassword').textContent = currentRoomPassword || 'ไม่มีรหัสผ่าน';
-            openModal('showPasswordModal');
-        }
+        function showRoomPassword() { document.getElementById('displayRoomPassword').textContent = currentRoomPassword || 'ไม่มีรหัสผ่าน'; openModal('showPasswordModal'); }
 
         async function createRoom() {
             const name = document.getElementById('newRoomName').value.trim();
             const user = document.getElementById('usernameInput').value.trim();
             const pass = document.getElementById('newRoomPass').value;
-            if(!user || !name) return showToast("กรุณาใส่ชื่อเล่นและชื่อห้อง");
-            
-            currentUsername = user;
-            currentRoomPassword = window.newRoomType === 'private' ? pass : '';
+            if(!user) return showToast("กรุณาใส่ชื่อเล่นของคุณก่อน");
+            if(!name) return showToast("กรุณาตั้งชื่อห้อง");
+            if(window.newRoomType === 'private' && !pass) return showToast("กรุณากำหนดรหัสผ่าน");
+            currentUsername = user; currentRoomPassword = window.newRoomType === 'private' ? pass : '';
             toggleLoading(true);
             const res = await api('createRoom', { name, type: window.newRoomType || 'public', password: pass, creator: user });
             toggleLoading(false);
-            if (res.ok) { closeModal('createRoomModal'); fetchRooms(); enterRoom(name); } else showToast(res.message);
+            if (res.ok) { switchLobbyTab('rooms'); enterRoom(name); } else { showToast(res.message); }
         }
 
         async function attemptJoinRoom(room) {
             const latestRooms = await api('getRooms');
-            if (!latestRooms[room.name]) {
-                showToast("ห้องนี้ถูกปิดหรือถูกลบแล้ว");
-                fetchRooms(true);
-                return;
-            }
-
+            if (!latestRooms[room.name]) { showToast("ห้องนี้ถูกปิดหรือถูกลบแล้ว"); fetchRooms(true); return; }
             const user = document.getElementById('usernameInput').value.trim();
-            if(!user) return showToast("กรุณาใส่ชื่อเล่นก่อนครับ");
-
+            if(!user) { switchLobbyTab('create'); showToast("กรุณาตั้งชื่อเล่นก่อนเข้าร่วมห้อง"); return; }
             currentUsername = user;
             if(room.type === 'private') {
                 openModal('passwordPromptModal');
                 document.getElementById('confirmJoinBtn').onclick = () => {
                     const inp = document.getElementById('joinRoomPasswordInput').value;
-                    if(inp === room.password) {
-                        currentRoomPassword = inp;
-                        closeModal('passwordPromptModal');
-                        enterRoom(room.name);
-                    } else showToast("รหัสผ่านไม่ถูกต้อง");
+                    if(inp === room.password) { currentRoomPassword = inp; closeModal('passwordPromptModal'); enterRoom(room.name); }
+                    else { closeModal('passwordPromptModal'); showToast("รหัสผ่านไม่ถูกต้อง"); setTimeout(() => { document.getElementById('joinRoomPasswordInput').value = ''; openModal('passwordPromptModal'); }, 800); }
                 };
-            } else {
-                currentRoomPassword = '';
-                enterRoom(room.name);
-            }
+            } else { currentRoomPassword = ''; enterRoom(room.name); }
         }
 
         async function enterRoom(name) {
-            currentRoom = name;
-            localStorage.setItem('chat_username', currentUsername);
-            document.getElementById('lobbyView').classList.add('hidden');
-            document.getElementById('chatView').classList.remove('hidden');
+            currentRoom = name; localStorage.setItem('chat_username', currentUsername);
+            document.getElementById('lobbyView').classList.add('hidden'); document.getElementById('chatView').classList.remove('hidden');
             document.getElementById('currentRoomName').textContent = name;
             document.getElementById('lockIcon').classList.toggle('hidden', !currentRoomPassword);
-            
-            await loadMessages();
-            await updatePresence();
+            await loadMessages(); await updatePresence();
             pollingIntervals = [setInterval(loadMessages, 4000), setInterval(updatePresence, 10000)];
         }
 
         async function updatePresence() {
             if (!currentUsername || !currentRoom) return;
-
             const users = await api('presence', { room: currentRoom, user: currentUsername });
             if(Array.isArray(users)) {
                 document.getElementById('onlineCountBadge').textContent = users.length;
@@ -516,9 +547,7 @@
                     return `
                         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-white shadow-sm">
                             <div class="flex items-center gap-3 overflow-hidden">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${isMe ? 'bg-pink-400' : 'bg-blue-400'}">
-                                    ${u.name.charAt(0).toUpperCase()}
-                                </div>
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${isMe ? 'bg-pink-400' : 'bg-blue-400'}">${u.name.charAt(0).toUpperCase()}</div>
                                 <div class="text-sm font-medium text-gray-700 truncate">${u.name} ${isMe ? '<span class="text-[9px] text-pink-400">(คุณ)</span>' : ''}</div>
                             </div>
                             <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
@@ -530,17 +559,9 @@
 
         async function loadMessages() {
             if (!currentRoom) return;
-
             const msgs = await api('getMessages', { room: currentRoom });
-
-            if (!Array.isArray(msgs)) {
-                showToast("ห้องนี้ถูกปิดแล้ว");
-                leaveRoom();
-                return;
-            }
-
-            messages = msgs;
-            renderMessages();
+            if (!Array.isArray(msgs)) { showToast("ห้องนี้ถูกปิดแล้ว"); leaveRoom(); return; }
+            messages = msgs; renderMessages();
         }
 
         function renderMessages() {
@@ -565,49 +586,28 @@
         }
 
         async function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const val = input.value.trim();
-            if(!val) return;
-            input.value = '';
-            await api('addMessage', { room: currentRoom, user: currentUsername, text: val });
-            loadMessages();
+            const input = document.getElementById('messageInput'); const val = input.value.trim();
+            if(!val) return; input.value = ''; await api('addMessage', { room: currentRoom, user: currentUsername, text: val }); loadMessages();
         }
 
-        // ✅ แก้ไข deleteMsg() เพิ่ม Optimistic UI และ Sync Delay
         async function deleteMsg(id) {
-            const msgId = String(id);
-            if (!confirm("ลบข้อความนี้?")) return;
+            msgToDeleteId = String(id); openModal('deleteConfirmModal');
+            document.getElementById('confirmDeleteBtn').onclick = () => { closeModal('deleteConfirmModal'); executeDelete(msgToDeleteId); };
+        }
 
-            // 1. Optimistic Update: ลบออกทันทีจากหน้าจอผู้ใช้
-            const backup = [...messages];
-            messages = messages.filter(m => String(m.id) !== msgId);
-            renderMessages();
-
-            // 2. เรียก API ลบจริง
+        async function executeDelete(msgId) {
+            const backup = [...messages]; messages = messages.filter(m => String(m.id) !== msgId); renderMessages();
             const res = await api('deleteMessage', { room: currentRoom, id: msgId, user: currentUsername });
-            
-            if (!res.ok) {
-                showToast(res.message || "ลบข้อความไม่สำเร็จ");
-                // 3. Rollback: ถ้าลบพลาด ดึงข้อมูลกลับมา
-                messages = backup;
-                renderMessages();
-            } else {
-                showToast("ลบข้อความแล้ว");
-                // 4. Delayed Sync: รอให้ DB อัปเดตเสร็จก่อนค่อยดึงข้อมูลใหม่ (ป้องกัน Race Condition)
-                setTimeout(loadMessages, 500);
-            }
+            if (!res.ok) { showToast(res.message || "ลบข้อความไม่สำเร็จ"); messages = backup; renderMessages(); }
+            else { showToast("ลบข้อความแล้ว"); setTimeout(loadMessages, 500); }
         }
 
         async function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file || file.size > 300000) return showToast("ไฟล์ต้องเล็กกว่า 300KB");
-            const reader = new FileReader();
-            reader.onload = async (ev) => {
-                toggleLoading(true);
-                await api('addMessage', { room: currentRoom, user: currentUsername, file: ev.target.result });
+            const file = e.target.files[0]; if (!file || file.size > 300000) return showToast("ไฟล์ต้องเล็กกว่า 300KB");
+            const reader = new FileReader(); reader.onload = async (ev) => {
+                toggleLoading(true); await api('addMessage', { room: currentRoom, user: currentUsername, file: ev.target.result });
                 toggleLoading(false); loadMessages();
-            };
-            reader.readAsDataURL(file);
+            }; reader.readAsDataURL(file);
         }
 
         function applyRadioState() {
@@ -615,39 +615,26 @@
             if (musicState.isPlaying) {
                 if(audio.src !== s.src) audio.src = s.src;
                 audio.play().catch(() => { musicState.isPlaying = false; updateRadioUI(); });
-                document.getElementById("miniPlayer").classList.remove("hidden");
-                document.getElementById("playerDisc").classList.add("disk-spin");
-            } else {
-                audio.pause();
-                document.getElementById("miniPlayer").classList.add("hidden");
-                document.getElementById("playerDisc").classList.remove("disk-spin");
-            }
+                document.getElementById("miniPlayer").classList.remove("hidden"); document.getElementById("playerDisc").classList.add("disk-spin");
+            } else { audio.pause(); document.getElementById("miniPlayer").classList.add("hidden"); document.getElementById("playerDisc").classList.remove("disk-spin"); }
             updateRadioUI();
         }
 
         function updateRadioUI() {
             const s = radioStations[musicState.playingIndex];
-            document.getElementById('playerSongTitle').textContent = s.title;
-            document.getElementById('miniSongTitle').textContent = s.title;
-            document.getElementById('playerPlayBtn').textContent = musicState.isPlaying ? '⏸' : '▶';
-            renderRadioList();
+            document.getElementById('playerSongTitle').textContent = s.title; document.getElementById('miniSongTitle').textContent = s.title;
+            document.getElementById('playerPlayBtn').textContent = musicState.isPlaying ? '⏸' : '▶'; renderRadioList();
         }
 
         window.toggleMusicPlayback = () => { musicState.isPlaying = !musicState.isPlaying; applyRadioState(); };
         window.stopMusicPlayback = () => { musicState.isPlaying = false; applyRadioState(); };
         window.changeTrackTo = (i) => { musicState.playingIndex = i; musicState.isPlaying = true; applyRadioState(); };
-        window.changeTrack = (d) => {
-            musicState.playingIndex = (musicState.playingIndex + d + radioStations.length) % radioStations.length;
-            musicState.isPlaying = true; applyRadioState();
-        };
+        window.changeTrack = (d) => { musicState.playingIndex = (musicState.playingIndex + d + radioStations.length) % radioStations.length; musicState.isPlaying = true; applyRadioState(); };
 
         function renderRadioList() {
             document.getElementById('playlistContainer').innerHTML = radioStations.map((s, i) => `
                 <div onclick="changeTrackTo(${i})" class="p-2.5 rounded-xl flex items-center justify-between transition-all ${musicState.playingIndex === i ? 'bg-pink-50' : 'hover:bg-gray-50'}">
-                    <div class="flex items-center gap-3 overflow-hidden text-left">
-                        <span class="text-[10px] font-bold ${musicState.playingIndex === i ? 'text-pink-500' : 'text-gray-400'}">${i+1}</span>
-                        <div class="text-xs font-bold text-gray-700 truncate">${s.title}</div>
-                    </div>
+                    <div class="flex items-center gap-3 overflow-hidden text-left"><span class="text-[10px] font-bold ${musicState.playingIndex === i ? 'text-pink-500' : 'text-gray-400'}">${i+1}</span><div class="text-xs font-bold text-gray-700 truncate">${s.title}</div></div>
                 </div>
             `).join('');
         }
@@ -658,28 +645,22 @@
         window.toggleUserListModal = () => { openModal('userModal'); updatePresence(); };
 
         window.leaveRoom = async () => {
-            document.getElementById('chatView').classList.add('hidden');
-            document.getElementById('lobbyView').classList.remove('hidden');
+            document.getElementById('chatView').classList.add('hidden'); document.getElementById('lobbyView').classList.remove('hidden');
             audio.pause(); pollingIntervals.forEach(clearInterval);
             if(currentRoom) await api('leaveRoom', { room: currentRoom, user: currentUsername });
-            
-            currentRoom = null;
-            roomRegistry = {};
-            fetchRooms(true);
+            currentRoom = null; roomRegistry = {}; switchLobbyTab('create');
         };
 
         window.setNewRoomType = (t) => {
-            window.newRoomType = t;
-            document.getElementById('typePublicBtn').className = `flex-1 p-2 rounded-xl text-xs font-bold ${t === 'public' ? 'bg-pink-100 text-pink-500 border-2 border-pink-400' : 'bg-gray-50 text-gray-400'}`;
-            document.getElementById('typePrivateBtn').className = `flex-1 p-2 rounded-xl text-xs font-bold ${t === 'private' ? 'bg-orange-100 text-orange-500 border-2 border-orange-400' : 'bg-gray-50 text-gray-400'}`;
-            document.getElementById('newRoomPass').classList.toggle('hidden', t !== 'private');
+            window.newRoomType = t; const pub = document.getElementById('typePublicBtn'); const pri = document.getElementById('typePrivateBtn'); const passCont = document.getElementById('newRoomPassContainer');
+            if (t === 'public') { pub.className = 'flex-1 p-3 rounded-2xl text-xs font-bold bg-pink-100 text-pink-500 border-2 border-pink-400 transition-all'; pri.className = 'flex-1 p-3 rounded-2xl text-xs font-bold bg-gray-50 text-gray-400 border-2 border-transparent transition-all'; passCont.classList.add('hidden'); }
+            else { pri.className = 'flex-1 p-3 rounded-2xl text-xs font-bold bg-orange-100 text-orange-500 border-2 border-orange-400 transition-all'; pub.className = 'flex-1 p-3 rounded-2xl text-xs font-bold bg-gray-50 text-gray-400 border-2 border-transparent transition-all'; passCont.classList.remove('hidden'); }
         };
 
         document.getElementById('usernameInput').value = currentUsername;
-        document.getElementById('usernameInput').addEventListener('input', e => {
-            document.getElementById('userAvatar').src = `https://api.dicebear.com/7.x/big-smile/svg?seed=${e.target.value || 'Chat'}`;
-        });
-        fetchRooms(true);
+        document.getElementById('usernameInput').addEventListener('input', e => { document.getElementById('userAvatar').src = `https://api.dicebear.com/7.x/big-smile/svg?seed=${e.target.value || 'Chat'}`; });
+        
+        switchLobbyTab('create');
     </script>
 </body>
 </html>
