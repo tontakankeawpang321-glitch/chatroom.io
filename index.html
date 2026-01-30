@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Chatroom Pro (Music Edition)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 1️⃣ เพิ่ม HLS.js -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -28,6 +27,7 @@
         }
         .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
         .disk-spin { animation: spin 8s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .paused { animation-play-state: paused; }
         
         .live-dot {
@@ -154,9 +154,7 @@
         </div>
     </div>
 
-    <!-- ==================== MODALS ==================== -->
-
-    <!-- Create Room Modal -->
+    <!-- Modals -->
     <div id="createRoomModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
         <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-4">
             <h2 class="text-xl font-bold text-center text-gray-800">สร้างห้องใหม่</h2>
@@ -173,7 +171,6 @@
         </div>
     </div>
 
-    <!-- Music/Radio Modal -->
     <div id="musicModal" class="hidden fixed inset-0 bg-white/95 backdrop-blur-xl z-50 flex flex-col">
         <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <button onclick="closeModal('musicModal')" class="text-gray-400 p-1 text-2xl">✕</button>
@@ -210,16 +207,13 @@
         </div>
     </div>
 
-    <!-- User List Modal -->
     <div id="userModal" class="hidden fixed inset-0 bg-black/50 z-50 flex justify-center items-end p-4">
-        <div class="bg-white w-full rounded-3xl p-6 shadow-2xl space-y-4 max-h-[60%] overflow-y-auto animate-in slide-in-from-bottom duration-300">
+        <div class="bg-white w-full rounded-3xl p-6 shadow-2xl space-y-4 max-h-[60%] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2 text-left">
                 <h3 class="font-bold text-gray-800">ผู้อยู่ในห้อง (<span id="userCountDetail">0</span>)</h3>
                 <button onclick="closeModal('userModal')" class="text-gray-400 text-xl font-bold">✕</button>
             </div>
             <div id="onlineUsersList" class="space-y-2 pt-2 text-left"></div>
-            
-            <!-- ปุ่มขอเป็นหัวห้อง -->
             <div id="requestAdminArea" class="pt-4 border-t hidden">
                 <button onclick="requestAdminPrivilege()" class="w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white py-3 rounded-2xl font-bold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
                     👑 ขอเป็นหัวห้อง
@@ -228,7 +222,6 @@
         </div>
     </div>
 
-    <!-- Password Modal -->
     <div id="passwordPromptModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
         <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-6 animate-slide-up text-center">
             <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto text-2xl">🔒</div>
@@ -241,10 +234,8 @@
         </div>
     </div>
     
-    <!-- Audio Element (Static HTML) -->
-    <audio id="mainAudio" controls class="hidden"></audio>
+    <audio id="mainAudio" class="hidden"></audio>
 
-    <!-- Scripts -->
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbyN2O8J4B4pGFt31h955kLF9U_m7hyCLqRTDpsanJzUZw8DyUR4mOwJaN7T0t7CgGYK/exec';
 
@@ -258,81 +249,37 @@
         let musicState = { playingIndex: 0, isPlaying: false };
         let audioUnlocked = false;
         
-        // 🔥 รายการเพลง MP3 ใหม่
         let radioStations = [
-            {
-                title: "เพลงที่ 1",
-                artist: "My Playlist",
-                src: "https://drive-music-server.onrender.com/music/001.mp3"
-            },
-            {
-                title: "เพลงที่ 2",
-                artist: "My Playlist",
-                src: "https://drive-music-server.onrender.com/music/002.mp3"
-            },
-            {
-                title: "เพลงที่ 3",
-                artist: "My Playlist",
-                src: "https://drive-music-server.onrender.com/music/003.mp3"
-            },
-            {
-                title: "เพลงที่ 4",
-                artist: "My Playlist",
-                src: "https://drive-music-server.onrender.com/music/004.mp3"
-            }
+            { title: "เพลงที่ 1", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/001.mp3" },
+            { title: "เพลงที่ 2", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/002.mp3" },
+            { title: "เพลงที่ 3", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/003.mp3" },
+            { title: "เพลงที่ 4", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/004.mp3" }
         ];
 
-        // 2️⃣ ปรับการตั้งค่า audio (ใช้ Element จาก HTML และลบ crossOrigin ออกเพื่อความชัวร์)
         const audio = document.getElementById("mainAudio");
-        audio.preload = "auto";
-        // audio.crossOrigin = "anonymous"; // ลบออกเพื่อให้โหลดไฟล์ง่ายขึ้น
         
-        let hls = null; // คงไว้ตามคำแนะนำ (แต่ไม่ได้ใช้กับ MP3)
-
         audio.onplaying = () => showToast("🎵 กำลังเล่นเพลง");
-        audio.onwaiting = () => showToast("⏳ กำลังโหลด...");
-        audio.onstalled = () => showToast("⚠️ สัญญาณขาด");
-        
-        // 🔥 เพิ่ม Listener เช็คสถานะไฟล์จริง
-        audio.onloadeddata = () => console.log("🎧 audio loaded");
         audio.onerror = (e) => {
             console.error("❌ audio error", e);
             showToast("❌ โหลดไฟล์เพลงไม่สำเร็จ");
         };
-        
-        // 🔥 ฟังก์ชัน Unlock Audio แบบชัวร์
-        function unlockAudioWithSource() {
-            if (audioUnlocked) return;
-            
-            // ใช้เพลงแรกเพื่อ unlock
-            audio.src = radioStations[0].src;
-            audio.muted = true;
-            
-            audio.play().then(() => {
-                audio.pause();
-                audio.muted = false;
-                audioUnlocked = true;
-                console.log("🔓 Audio unlocked successfully");
-            }).catch(err => {
-                console.warn("Unlock failed", err);
-            });
-        }
 
         function isRealRoomAdmin() {
-            return roomRegistry[currentRoom]?.admin === currentUsername;
+            if (!currentRoom || !roomRegistry[currentRoom]) return false;
+            return roomRegistry[currentRoom].admin === currentUsername;
         }
 
-        // --- API Helper ---
         async function api(action, payload = {}) {
             try {
-                const response = await fetch(API_URL, {
+                const r = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action, key: 'chat-v1', ...payload })
                 });
-                return await response.json();
-            } catch (error) {
-                return { ok: false, error: 'Connection Error' };
+                return await r.json();
+            } catch (err) {
+                console.warn("API Error:", err);
+                return { ok: false, data: [] };
             }
         }
 
@@ -348,7 +295,6 @@
             setTimeout(() => { t.classList.remove('opacity-100'); t.classList.add('opacity-0'); }, 3000);
         }
 
-        // --- Lobby ---
         async function fetchRooms(showLoader = false) {
             if(showLoader) toggleLoading(true);
             const rooms = await api('getRooms');
@@ -409,7 +355,6 @@
             } else enterRoom(room.name);
         }
 
-        // --- Chat ---
         async function enterRoom(name) {
             currentRoom = name;
             localStorage.setItem('chat_username', currentUsername);
@@ -426,14 +371,36 @@
             ];
         }
 
+        // 🔥 อัปเกรด updatePresence: ระบบหัวห้องอัตโนมัติ
         async function updatePresence() {
+            // ดึงข้อมูลห้องล่าสุดเพื่อให้แน่ใจว่า admin ตรงกัน
+            const rooms = await api('getRooms');
+            if (rooms && !rooms.error) {
+                roomRegistry = rooms;
+            }
+
             const users = await api('presence', { room: currentRoom, user: currentUsername });
             if(Array.isArray(users)) {
+                // 1. เช็คว่าหัวห้องปัจจุบันออนไลน์อยู่ไหม
+                const currentAdmin = roomRegistry[currentRoom]?.admin || 'System';
+                const adminOnline = users.some(u => u.name === currentAdmin);
+
+                // 2. ถ้าหัวห้องเป็น System หรือ หัวห้องไม่อยู่แล้ว
+                if ((currentAdmin === 'System' || !adminOnline) && users.length > 0) {
+                    // 3. เรียงชื่อตามตัวอักษร ใครมาก่อน/ชื่อแรก รับสิทธิ์ไป
+                    const candidates = [...users].sort((a, b) => a.name.localeCompare(b.name));
+                    const newAdmin = candidates[0];
+
+                    // 4. ถ้าฉันคือคนคนนั้น ให้ฉันส่งคำสั่งตั้งตัวเองเป็นหัวห้อง
+                    if (newAdmin.name === currentUsername) {
+                        console.log("👑 หัวห้องไม่อยู่ รับสิทธิ์อัตโนมัติ");
+                        approveAdmin(currentUsername);
+                    }
+                }
+
                 document.getElementById('onlineCountBadge').textContent = users.length;
                 document.getElementById('userCountDetail').textContent = users.length;
-                
                 const adminToShow = actingAdmin || 'System';
-
                 document.getElementById('onlineUsersList').innerHTML = users.map(u => {
                     const isAdmin = u.name === adminToShow;
                     const isMe = u.name === currentUsername;
@@ -451,15 +418,12 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
-                                ${isRealRoomAdmin() && !isMe ? `
-                                    <button onclick="approveAdmin('${u.name}')" class="text-[9px] bg-yellow-100 text-yellow-600 px-2 py-1 rounded-full font-bold border border-yellow-200">โอนหัวห้อง</button>
-                                ` : ''}
+                                ${isRealRoomAdmin() && !isMe ? `<button onclick="approveAdmin('${u.name}')" class="text-[9px] bg-yellow-100 text-yellow-600 px-2 py-1 rounded-full font-bold border border-yellow-200">โอนหัวห้อง</button>` : ''}
                                 <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0"></div>
                             </div>
                         </div>
                     `;
                 }).join('');
-
                 document.getElementById('requestAdminArea').classList.toggle('hidden', currentUsername === adminToShow);
             }
         }
@@ -467,12 +431,7 @@
         async function deleteMsg(id) {
             if (!confirm("ลบข้อความนี้?")) return;
             const idString = String(id);
-            await api('addMessage', { 
-                room: currentRoom, 
-                user: currentUsername, 
-                text: `CMD:SYSTEM:DELETE:${idString}`, 
-                isSystem: true 
-            });
+            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:SYSTEM:DELETE:${idString}`, isSystem: true });
             loadMessages();
         }
 
@@ -491,62 +450,41 @@
 
         async function approveAdmin(newAdminName) {
             await api('setAdmin', { room: currentRoom, newAdmin: newAdminName });
-            await api('addMessage', { 
-                room: currentRoom, 
-                user: currentUsername, 
-                text: `CMD:SYSTEM:GRANT_ADMIN:${newAdminName}`, 
-                isSystem: true 
-            });
-
+            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:SYSTEM:GRANT_ADMIN:${newAdminName}`, isSystem: true });
             if (actingAdmin !== 'System') showToast(`โอนหัวห้องให้ ${newAdminName} แล้ว`);
-            
             const rooms = await api('getRooms');
             if (rooms && !rooms.error) {
                 roomRegistry = rooms;
                 actingAdmin = roomRegistry[currentRoom]?.admin || 'System';
             }
-
             loadMessages();
             updatePresence();
         }
 
         async function loadMessages() {
             if (!currentRoom) return;
-            
             actingAdmin = roomRegistry[currentRoom]?.admin || 'System';
-
             const msgs = await api('getMessages', { room: currentRoom });
             if (Array.isArray(msgs)) {
-                const deletedIds = msgs
-                  .filter(m => m.text?.startsWith('CMD:SYSTEM:DELETE:'))
-                  .map(m => m.text.split(':')[3]);
-                
-                msgs.forEach(m => {
-                    if (m.text?.startsWith("CMD:SYSTEM:REQ_ADMIN:")) {
-                        const reqName = m.text.split(':')[3];
-                        if ((actingAdmin === 'System' || actingAdmin === '') && reqName === currentUsername) {
-                            approveAdmin(currentUsername);
-                        }
-                    }
-                });
+                // อัปเดต admin จากข้อความล่าสุด เผื่อ roomRegistry ยังไม่อัปเดต
+                const lastGrant = msgs.filter(m => m.text?.startsWith('CMD:SYSTEM:GRANT_ADMIN:')).pop();
+                if (lastGrant) {
+                   const newAdminFromMsg = lastGrant.text.split(':')[3];
+                   actingAdmin = newAdminFromMsg;
+                   if(roomRegistry[currentRoom]) roomRegistry[currentRoom].admin = newAdminFromMsg;
+                }
 
+                const deletedIds = msgs.filter(m => m.text?.startsWith('CMD:SYSTEM:DELETE:')).map(m => m.text.split(':')[3]);
                 document.getElementById('currentAdminName').textContent = actingAdmin;
-
                 const visibleMsgs = msgs.filter(m => {
                     if (!m.id && !m.timestamp) return false;
                     const idString = String(m.id || m.timestamp);
                     const isDeleted = deletedIds.includes(idString);
                     const isNormalSystem = m.isSystem && !m.text?.startsWith("CMD:");
-                    const isRequest = m.text?.startsWith("CMD:SYSTEM:REQ_ADMIN:");
-                    const isGrant = m.text?.startsWith("CMD:SYSTEM:GRANT_ADMIN:");
-                    return !isDeleted && (!m.isSystem || isNormalSystem || isRequest || isGrant);
+                    return !isDeleted && (!m.isSystem || isNormalSystem || m.text?.startsWith("CMD:SYSTEM:REQ_ADMIN:") || m.text?.startsWith("CMD:SYSTEM:GRANT_ADMIN:"));
                 });
-
                 const lastRadioCmd = visibleMsgs.filter(m => m.text?.startsWith('CMD:RADIO:')).pop();
-                if (lastRadioCmd && lastRadioCmd.user !== currentUsername) {
-                    syncRadioFromCommand(lastRadioCmd.text);
-                }
-
+                if (lastRadioCmd && lastRadioCmd.user !== currentUsername) syncRadioFromCommand(lastRadioCmd.text);
                 if (JSON.stringify(visibleMsgs) !== JSON.stringify(messages)) {
                     messages = visibleMsgs;
                     renderMessages();
@@ -557,49 +495,17 @@
         function renderMessages() {
             const list = document.getElementById('messagesList');
             list.innerHTML = messages.map(m => {
-                if(m.isSystem && !m.text.startsWith("CMD:")) {
-                    return `<div class="text-center my-2 text-[10px] text-gray-400 uppercase font-bold">${m.text}</div>`;
-                }
-
+                if(m.isSystem && !m.text.startsWith("CMD:")) return `<div class="text-center my-2 text-[10px] text-gray-400 uppercase font-bold">${m.text}</div>`;
                 if(m.text?.startsWith("CMD:SYSTEM:REQ_ADMIN:")) {
                     const reqName = m.text.split(':')[3];
-                    return `
-                        <div class="flex justify-center my-3 animate-bounce">
-                            <div class="bg-yellow-50 border border-yellow-200 rounded-2xl px-4 py-2 text-center shadow-sm">
-                                <div class="text-[10px] font-bold text-yellow-700 uppercase mb-1">📢 คำขอเป็นหัวห้อง</div>
-                                <div class="text-xs text-gray-700"><b>${reqName}</b> อยากเป็นหัวห้อง</div>
-                                ${isRealRoomAdmin() && actingAdmin !== 'System' ? `
-                                    <button onclick="approveAdmin('${reqName}')" class="mt-2 bg-yellow-400 text-white px-4 py-1 rounded-full text-[10px] font-bold shadow-sm hover:bg-yellow-500 transition-all">อนุมัติสิทธิ์</button>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
+                    return `<div class="flex justify-center my-3"><div class="bg-yellow-50 border border-yellow-200 rounded-2xl px-4 py-2 text-center shadow-sm"><div class="text-[10px] font-bold text-yellow-700 uppercase mb-1">📢 คำขอเป็นหัวห้อง</div><div class="text-xs text-gray-700"><b>${reqName}</b> อยากเป็นหัวห้อง</div>${isRealRoomAdmin() && actingAdmin !== 'System' ? `<button onclick="approveAdmin('${reqName}')" class="mt-2 bg-yellow-400 text-white px-4 py-1 rounded-full text-[10px] font-bold">อนุมัติสิทธิ์</button>` : ''}</div></div>`;
                 }
-
-                if(m.text?.startsWith("CMD:SYSTEM:GRANT_ADMIN:")) {
-                    const newAdmin = m.text.split(':')[3];
-                    return `<div class="text-center my-3 text-[10px] text-pink-500 font-bold uppercase animate-pulse">👑 ${newAdmin} ได้รับแต่งตั้งเป็นหัวห้องแล้ว</div>`;
-                }
-
+                if(m.text?.startsWith("CMD:SYSTEM:GRANT_ADMIN:")) return `<div class="text-center my-3 text-[10px] text-pink-500 font-bold uppercase animate-pulse">👑 ${m.text.split(':')[3]} ได้รับแต่งตั้งเป็นหัวห้องแล้ว</div>`;
                 if(m.text?.startsWith("CMD:")) return '';
-
                 const isMe = m.user === currentUsername;
                 const isAdminMsg = m.user === actingAdmin;
-                
                 const msgId = String(m.id || m.timestamp);
-
-                return `
-                    <div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up relative group">
-                        <div class="max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}">
-                            ${!isMe ? `<span class="text-[10px] text-gray-400 mb-1 ml-1 flex items-center gap-1 text-left">${m.user} ${isAdminMsg ? '<span class="text-yellow-500">👑</span>' : ''}</span>` : ''}
-                            <div class="p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-pink-500 text-white rounded-br-sm' : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm text-left'}">
-                                ${m.text || ''}
-                                ${m.file ? `<img src="${m.file}" class="mt-2 rounded-lg max-h-40 w-full object-cover">` : ''}
-                                ${isMe ? `<button onclick="deleteMsg('${msgId}')" class="absolute -top-2 -left-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow text-[10px] opacity-0 group-hover:opacity-100 transition-opacity active:scale-110">🗑️</button>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
+                return `<div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up relative group"><div class="max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}">${!isMe ? `<span class="text-[10px] text-gray-400 mb-1 ml-1 flex items-center gap-1">${m.user} ${isAdminMsg ? '<span class="text-yellow-500">👑</span>' : ''}</span>` : ''}<div class="p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-pink-500 text-white rounded-br-sm' : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'}">${m.text || ''}${m.file ? `<img src="${m.file}" class="mt-2 rounded-lg max-h-40 w-full object-cover">` : ''}${isMe ? `<button onclick="deleteMsg('${msgId}')" class="absolute -top-2 -left-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow text-[10px] opacity-0 group-hover:opacity-100">🗑️</button>` : ''}</div></div></div>`;
             }).join('');
             list.scrollTo(0, list.scrollHeight);
         }
@@ -633,6 +539,7 @@
                     musicState.playingIndex = idx;
                     musicState.isPlaying = true;
                     applyRadioState();
+                    if (!audioUnlocked) showToast("🎵 มีเพลงกำลังเล่นอยู่ กด ▶ เพื่อฟัง");
                 }
             } else if (action === 'STOP') {
                 musicState.isPlaying = false;
@@ -640,34 +547,22 @@
             }
         }
 
-        // 3️⃣ ปรับ applyRadioState ให้เล่น MP3 ตามปกติ (ไม่ต้องเช็ค m3u8 แล้ว)
         function applyRadioState() {
             const station = radioStations[musicState.playingIndex];
             if (!station) return;
-
             if (musicState.isPlaying) {
-                if (hls) { 
-                    hls.detachMedia();
-                    hls.destroy(); 
-                    hls = null; 
-                }
-                
-                // 🔊 MP3
                 if (audio.src !== station.src) {
                     audio.pause();
                     audio.src = station.src;
                     audio.load();
                 }
-                audio.play().catch(err => {
-                    console.warn("Play failed:", err);
-                    showToast("⚠️ เบราว์เซอร์บล็อกเสียง กด ▶ อีกครั้ง");
+                audio.play().catch(() => {
+                    console.warn("Autoplay blocked");
                 });
-
                 document.getElementById("miniPlayer").classList.remove("hidden");
                 document.getElementById("playerDisc").classList.add("disk-spin");
             } else {
                 audio.pause();
-                // ❌ ลบ removeAttribute("src") ออก เพื่อไม่ให้ context หาย
                 document.getElementById("miniPlayer").classList.add("hidden");
                 document.getElementById("playerDisc").classList.remove("disk-spin");
             }
@@ -684,52 +579,38 @@
             renderRadioList();
         }
 
-        // ✅ ปลดล็อค: ทุกคนกดได้ (แก้ไข toggleMusicPlayback: บังคับ unlock เมื่อกดปุ่ม)
         window.toggleMusicPlayback = async () => {
-             // 🔓 บังคับ unlock ก่อนทุกครั้ง
+            if (!isRealRoomAdmin()) {
+              return showToast("เฉพาะหัวห้องควบคุมเพลงได้");
+            }
+
             if (!audioUnlocked) {
                 try {
-                    audio.src = radioStations[musicState.playingIndex].src;
                     audio.muted = true;
                     await audio.play();
                     audio.pause();
                     audio.muted = false;
                     audioUnlocked = true;
-                    console.log("🔓 Audio unlocked by user click");
-                } catch (e) {
-                    console.warn("Unlock failed", e);
-                    showToast("❌ ต้องกดปุ่ม ▶ อีกครั้ง");
-                    return;
-                }
+                } catch (e) { return; }
             }
-
             musicState.isPlaying = !musicState.isPlaying;
             applyRadioState();
             await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:RADIO:${musicState.isPlaying ? 'PLAY' : 'STOP'}:${musicState.playingIndex}`, isSystem: true });
         };
 
         window.stopMusicPlayback = async () => {
+            if (!isRealRoomAdmin()) {
+              return showToast("เฉพาะหัวห้องควบคุมเพลงได้");
+            }
             musicState.isPlaying = false;
             applyRadioState();
             await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:RADIO:STOP:0`, isSystem: true });
         };
 
         window.changeTrackTo = async (idx) => {
-            // 🔓 บังคับ unlock ก่อนเปลี่ยนเพลง
-            if (!audioUnlocked) {
-                try {
-                    audio.src = radioStations[idx].src;
-                    audio.muted = true;
-                    await audio.play();
-                    audio.pause();
-                    audio.muted = false;
-                    audioUnlocked = true;
-                } catch (e) {
-                    showToast("❌ กดเปลี่ยนเพลงอีกครั้ง");
-                    return;
-                }
+            if (!isRealRoomAdmin()) {
+              return showToast("เฉพาะหัวห้องควบคุมเพลงได้");
             }
-            
             musicState.playingIndex = idx;
             musicState.isPlaying = true;
             applyRadioState();
@@ -742,11 +623,10 @@
         };
 
         function addNewRadioStation() {
-            const input = document.getElementById('radioUrlInput');
-            const url = input.value.trim();
+            const url = document.getElementById('radioUrlInput').value.trim();
             if (!url.startsWith('http')) return showToast("ลิงก์ไม่ถูกต้อง");
             radioStations.push({ title: "Custom Radio", artist: "Custom Stream", src: url });
-            input.value = ""; renderRadioList(); showToast("เพิ่มสถานีแล้ว");
+            document.getElementById('radioUrlInput').value = ""; renderRadioList(); showToast("เพิ่มสถานีแล้ว");
         }
 
         function deleteStation(idx, event) {
@@ -760,16 +640,14 @@
         function renderRadioList() {
             const container = document.getElementById('playlistContainer');
             container.innerHTML = radioStations.map((s, i) => `
-                <div onclick="changeTrackTo(${i})" class="p-2.5 rounded-xl flex items-center justify-between group cursor-pointer transition-all ${musicState.playingIndex === i ? 'bg-pink-50' : 'hover:bg-gray-50'}">
+                <div onclick="changeTrackTo(${i})" class="p-2.5 rounded-xl flex items-center justify-between group transition-all ${musicState.playingIndex === i ? 'bg-pink-50' : 'hover:bg-gray-50'}">
                     <div class="flex items-center gap-3 overflow-hidden text-left">
                         <span class="text-[10px] font-bold ${musicState.playingIndex === i ? 'text-pink-500' : 'text-gray-400'}">${i+1}</span>
-                        <div class="overflow-hidden">
-                            <div class="text-xs font-bold text-gray-700 truncate">${s.title}</div>
-                        </div>
+                        <div class="overflow-hidden"><div class="text-xs font-bold text-gray-700 truncate">${s.title}</div></div>
                     </div>
                     <div class="flex items-center gap-2">
                         ${musicState.playingIndex === i && musicState.isPlaying ? '<span class="animate-pulse text-xs text-pink-500">📻</span>' : ''}
-                        <button onclick="deleteStation(${i}, event)" class="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-red-500 transition-all">🗑️</button>
+                        <button onclick="deleteStation(${i}, event)" class="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-red-500">🗑️</button>
                     </div>
                 </div>
             `).join('');
@@ -785,12 +663,7 @@
             fetchRooms(); 
         };
         
-        // 2️⃣ Unlock Audio เมื่อเปิด Player Modal
-        window.togglePlayerModal = () => { 
-            openModal('musicModal'); 
-            renderRadioList(); 
-            // ไม่เรียก unlock ที่นี่แล้ว ไปเรียกที่ปุ่มกดแทน
-        };
+        window.togglePlayerModal = () => { openModal('musicModal'); renderRadioList(); };
         window.toggleUserListModal = () => { openModal('userModal'); updatePresence(); };
         
         window.setNewRoomType = (type) => { 
