@@ -62,6 +62,19 @@
             background: #e5e7eb;
             border-radius: 2px;
         }
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+        .emoji-btn {
+            cursor: pointer;
+            padding: 8px;
+            text-align: center;
+            border-radius: 10px;
+            transition: background 0.2s;
+        }
+        .emoji-btn:hover { background: #f3f4f6; }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center">
@@ -118,7 +131,6 @@
             <div class="px-2 mb-2">
                 <div class="relative">
                     <input id="searchRoomInput" oninput="renderRoomList()" placeholder="🔍 ค้นหาห้อง..." class="w-full bg-white/50 border border-white/50 rounded-xl py-2 px-4 pl-10 text-sm outline-none focus:bg-white transition-all">
-                    <span class="absolute left-3 top-2 text-gray-400 text-sm"></span>
                 </div>
             </div>
             <h3 class="text-xs font-bold text-gray-500 uppercase px-2 mb-2 flex justify-between items-center">
@@ -135,11 +147,11 @@
     <div id="chatView" class="hidden w-full max-w-lg bg-slate-50 h-full flex flex-col shadow-2xl relative">
         <!-- Header -->
         <div class="h-16 flex items-center justify-between px-4 bg-white border-b border-gray-100 z-30 shadow-sm">
-            <div class="flex items-center gap-3 overflow-hidden">
+            <div class="flex items-center gap-3 overflow-hidden text-left">
                 <button onclick="leaveRoom()" class="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0">
                     <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <div class="overflow-hidden text-left">
+                <div class="overflow-hidden">
                     <div class="font-bold text-gray-800 flex items-center gap-2">
                         <span id="currentRoomName" class="truncate">Room</span>
                         <span id="lockIcon" class="hidden text-orange-400 text-xs">🔒</span>
@@ -168,7 +180,7 @@
                 <div id="miniDisc" class="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-xs flex-shrink-0">🎵</div>
                 <div class="overflow-hidden text-left">
                     <div id="miniSongTitle" class="text-[10px] font-bold text-gray-800 truncate">Song Name</div>
-                    <div id="miniSongArtist" class="text-[9px] text-red-500 flex items-center"><span class="live-dot animate-pulse"></span> NOW PLAYING (Local)</div>
+                    <div id="miniSongArtist" class="text-[9px] text-red-500 flex items-center"><span class="live-dot animate-pulse"></span> NOW PLAYING</div>
                 </div>
             </div>
             <div class="flex items-center gap-1">
@@ -199,7 +211,7 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Create Room Modal -->
     <div id="createRoomModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
         <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-4">
             <h2 class="text-xl font-bold text-center text-gray-800">สร้างห้องใหม่</h2>
@@ -216,11 +228,12 @@
         </div>
     </div>
 
+    <!-- Music Player Modal -->
     <div id="musicModal" class="hidden fixed inset-0 bg-white/95 backdrop-blur-xl z-50 flex flex-col">
         <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <button onclick="closeModal('musicModal')" class="text-gray-400 p-1 text-2xl">✕</button>
             <span class="text-xs font-bold text-pink-500 uppercase tracking-widest bg-pink-50 px-4 py-1.5 rounded-full">
-                100 เพลงฮิตไทย ปัจจุบัน
+                MUSIC PLAYLIST
             </span>
             <div class="w-6"></div>
         </div>
@@ -235,7 +248,6 @@
                 <p id="playerSongArtist" class="text-red-500 text-xs font-bold flex items-center justify-center mt-1"><span class="live-dot animate-pulse"></span> NOW PLAYING</p>
             </div>
 
-            <!-- Time Slider -->
             <div class="w-full max-w-[280px] space-y-1">
                 <input type="range" id="progressBar" min="0" max="100" value="0" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500">
                 <div class="flex justify-between text-[10px] text-gray-400 font-bold">
@@ -252,15 +264,12 @@
             </div>
 
             <div class="w-full max-w-sm space-y-3">
-                <div class="flex gap-2">
-                    <input id="radioUrlInput" class="flex-grow bg-gray-50 border border-gray-100 rounded-xl p-2 text-xs outline-none focus:ring-1 focus:ring-pink-200" placeholder="เพิ่มลิงก์เพลง (mp3)...">
-                    <button onclick="addNewRadioStation()" class="bg-blue-50 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md">เพิ่ม</button>
-                </div>
                 <div id="playlistContainer" class="w-full space-y-2 max-h-64 overflow-y-auto custom-scroll px-2 border-t pt-3 text-left"></div>
             </div>
         </div>
     </div>
 
+    <!-- User List Modal -->
     <div id="userModal" class="hidden fixed inset-0 bg-black/50 z-50 flex justify-center items-end p-4">
         <div class="bg-white w-full rounded-3xl p-6 shadow-2xl space-y-4 max-h-[60%] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-2 text-left">
@@ -306,38 +315,26 @@
         // State Management
         let currentUsername = localStorage.getItem('chat_username') || '';
         let currentRoom = null;
-        let currentRoomPassword = localStorage.getItem('chat_room_password') || ''; 
+        let currentRoomPassword = ''; 
         let roomRegistry = {};
         let messages = [];
         let pollingIntervals = [];
         let musicState = { playingIndex: 0, isPlaying: false };
-        let audioUnlocked = false;
         
         let radioStations = [
-            { title: "001 ใจฉันตามเธอไป - YOUNGOHM", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/001.mp3" },
-            { title: "002 แก้บน - ก้านตอง ทุ่งเงิน", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/002.mp3" },
-            { title: "003 ฉันมันก็ดีได้แค่นี้ - MrSad17", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/003.mp3" },
-            { title: "004 ฝากให้เขารัก - Yes'sir Days", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/004.mp3" }
+            { title: "001 ใจฉันตามเธอไป - YOUNGOHM", src: "https://drive-music-server.onrender.com/music/001.mp3" },
+            { title: "002 แก้บน - ก้านตอง ทุ่งเงิน", src: "https://drive-music-server.onrender.com/music/002.mp3" },
+            { title: "003 ฉันมันก็ดีได้แค่นี้ - MrSad17", src: "https://drive-music-server.onrender.com/music/003.mp3" },
+            { title: "004 ฝากให้เขารัก - Yes'sir Days", src: "https://drive-music-server.onrender.com/music/004.mp3" }
         ];
 
-        // Emojis list
-        const emojis = [
-            "😀", "😂", "🥰", "😍", "😘", "😭", "😤", "😡", "😱", "👍", "👎", "👋", 
-            "🙏", "❤️", "💔", "🎉", "🔥", "✨", "🎵", "📷", "👻", "👽", "🤖", "💩",
-            "🐶", "🐱", "🐵", "🦄", "🌈", "⭐"
-        ];
+        const emojis = ["😀", "😂", "🥰", "😍", "😘", "😭", "😤", "😡", "😱", "👍", "👎", "👋", "🙏", "❤️", "🎉", "🔥", "✨", "🎵", "📷", "👻"];
 
         const audio = document.getElementById("mainAudio");
         const progressBar = document.getElementById('progressBar');
         const currentTimeDisplay = document.getElementById('currentTimeDisplay');
         const durationDisplay = document.getElementById('durationDisplay');
         
-        audio.onplaying = () => showToast("🎵 กำลังเล่นเพลง");
-        audio.onerror = (e) => {
-            console.error("❌ audio error", e);
-            showToast("❌ โหลดไฟล์เพลงไม่สำเร็จ (Server อาจหลับ)");
-        };
-
         // Initialize Emoji Picker
         const emojiList = document.getElementById('emojiList');
         emojis.forEach(emoji => {
@@ -348,127 +345,42 @@
             emojiList.appendChild(btn);
         });
 
-        function toggleEmojiPicker() {
-            const picker = document.getElementById('emojiPicker');
-            picker.classList.toggle('hidden');
-        }
-
+        function toggleEmojiPicker() { document.getElementById('emojiPicker').classList.toggle('hidden'); }
         function addEmoji(emoji) {
             const input = document.getElementById('messageInput');
-            input.value += emoji;
-            input.focus();
-            toggleEmojiPicker();
+            input.value += emoji; input.focus(); toggleEmojiPicker();
         }
 
-        // Image Viewer Logic
+        // Image Viewer
+        let scale = 1, panning = false, pointX = 0, pointY = 0, start = { x: 0, y: 0 };
         function openImageViewer(src) {
             const modal = document.getElementById('imageViewerModal');
             const img = document.getElementById('expandedImage');
-            img.src = src;
-            img.style.transform = "scale(1) translate(0px, 0px)";
-            scale = 1;
-            panning = false;
-            pointX = 0;
-            pointY = 0;
-            start = { x: 0, y: 0 };
+            img.src = src; img.style.transform = "scale(1) translate(0px, 0px)";
+            scale = 1; pointX = 0; pointY = 0;
             modal.classList.remove('hidden');
         }
+        function closeImageViewer() { document.getElementById('imageViewerModal').classList.add('hidden'); }
 
-        function closeImageViewer() {
-            document.getElementById('imageViewerModal').classList.add('hidden');
-        }
-
-        // Touch Zoom Logic
-        const imgContainer = document.getElementById('expandedImage');
-        let scale = 1, panning = false, pointX = 0, pointY = 0, start = { x: 0, y: 0 };
-
-        function setTransform() {
-            imgContainer.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
-        }
-
-        imgContainer.addEventListener('mousedown', function(e) {
-            e.preventDefault();
-            start = { x: e.clientX - pointX, y: e.clientY - pointY };
-            panning = true;
-        });
-
-        imgContainer.addEventListener('mouseup', function(e) {
-            panning = false;
-        });
-
-        imgContainer.addEventListener('mousemove', function(e) {
-            e.preventDefault();
-            if (!panning) return;
-            pointX = (e.clientX - start.x);
-            pointY = (e.clientY - start.y);
-            setTransform();
-        });
-
-        imgContainer.addEventListener('wheel', function(e) {
-            e.preventDefault();
-            const xs = (e.clientX - pointX) / scale,
-                  ys = (e.clientY - pointY) / scale,
-                  delta = -e.deltaY;
-            
-            (delta > 0) ? (scale *= 1.2) : (scale /= 1.2);
-            pointX = e.clientX - xs * scale;
-            pointY = e.clientY - ys * scale;
-            setTransform();
-        });
-        
-        // Basic touch handling for mobile (Double tap to zoom)
-        let lastTap = 0;
-        imgContainer.addEventListener('touchend', function(e) {
-            const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTap;
-            if (tapLength < 500 && tapLength > 0) {
-                e.preventDefault();
-                if(scale === 1) {
-                    scale = 2;
-                } else {
-                    scale = 1;
-                    pointX = 0;
-                    pointY = 0;
-                }
-                setTransform();
-            }
-            lastTap = currentTime;
-        });
-
-
-        // Time Update Listener
+        // Audio Listeners
         audio.addEventListener('timeupdate', () => {
             if(!audio.duration) return;
-            const progress = (audio.currentTime / audio.duration) * 100;
-            progressBar.value = progress;
+            progressBar.value = (audio.currentTime / audio.duration) * 100;
             currentTimeDisplay.textContent = formatTime(audio.currentTime);
         });
-
-        // Duration Load Listener
-        audio.addEventListener('loadedmetadata', () => {
-            durationDisplay.textContent = formatTime(audio.duration);
-            progressBar.value = 0;
-        });
-
-        // Auto Next Track
-        audio.addEventListener('ended', () => {
-            changeTrack(1);
-        });
-
-        // Seek Bar Interaction
+        audio.addEventListener('loadedmetadata', () => durationDisplay.textContent = formatTime(audio.duration));
+        audio.addEventListener('ended', () => changeTrack(1));
         progressBar.addEventListener('input', (e) => {
-            if(!audio.duration) return;
-            const seekTime = (e.target.value / 100) * audio.duration;
-            audio.currentTime = seekTime;
+            if(audio.duration) audio.currentTime = (e.target.value / 100) * audio.duration;
         });
 
         function formatTime(s) {
             if(isNaN(s)) return "0:00";
-            const mins = Math.floor(s / 60);
-            const secs = Math.floor(s % 60);
-            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+            return `${m}:${sec < 10 ? '0' : ''}${sec}`;
         }
 
+        // API Core
         async function api(action, payload = {}) {
             try {
                 const r = await fetch(API_URL, {
@@ -477,21 +389,13 @@
                     body: JSON.stringify({ action, key: 'chat-v1', ...payload })
                 });
                 return await r.json();
-            } catch (err) {
-                console.warn("API Error:", err);
-                return { ok: false, data: [] };
-            }
+            } catch (err) { return { ok: false, data: [] }; }
         }
 
-        function toggleLoading(show) {
-            document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
-        }
-
+        function toggleLoading(show) { document.getElementById('loadingOverlay').classList.toggle('hidden', !show); }
         function showToast(msg) {
             const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.classList.remove('opacity-0');
-            t.classList.add('opacity-100');
+            t.textContent = msg; t.classList.remove('opacity-0'); t.classList.add('opacity-100');
             setTimeout(() => { t.classList.remove('opacity-100'); t.classList.add('opacity-0'); }, 3000);
         }
 
@@ -502,57 +406,32 @@
             if (rooms && !rooms.error) {
                 roomRegistry = rooms;
                 renderRoomList();
-                // After fetching rooms, fetch counts for each
                 fetchRoomCounts(Object.keys(rooms));
             }
         }
 
-        // New function to update counts and auto-delete empty rooms
+        // ✅ FIX 1 & 2: แก้ fetchRoomCounts ใหม่ทั้งฟังก์ชัน
         async function fetchRoomCounts(roomNames) {
             for (const room of roomNames) {
-                try {
-                    const users = await api('presence', { room: room });
-                    const count = Array.isArray(users) ? users.length : 0;
-                    
-                    const countEl = document.getElementById(`count-${room}`);
-                    const roomCard = document.getElementById(`room-card-${room}`);
-                    
-                    if (countEl) {
-                        countEl.innerHTML = `👤 ${count}`;
-                        if (count === 0) {
-                            countEl.classList.add('text-red-400');
-                            // AUTO CLEANUP GHOST ROOMS
-                            console.log(`Cleaning up ghost room: ${room}`);
-                            const savedPass = localStorage.getItem('chat_room_password') || '';
-                            const regPass = roomRegistry[room]?.password || '';
-                            const passToUse = regPass || savedPass;
-                            
-                            // 1. Call Delete API
-                            api('deleteRoom', { name: room, password: passToUse, user: 'system_cleanup' });
-                            
-                            // 2. Hide from UI immediately
-                            if(roomCard) roomCard.style.display = 'none';
-                        }
-                    }
-                } catch (e) {
-                    console.log('Error fetching count for', room);
-                }
+                // ❌ lobby ไม่ควรยิง presence ให้แสดง 0 ไปก่อน
+                const countEl = document.getElementById(`count-${room}`);
+                if (countEl) countEl.innerHTML = `👤 0`;
+                
+                // ❌ ลบ block ที่สั่ง deleteRoom ออกทั้งก้อน เพื่อความปลอดภัย
             }
         }
 
         function renderRoomList() {
             const list = document.getElementById('roomsList');
-            const searchTerm = document.getElementById('searchRoomInput').value.toLowerCase();
+            const search = document.getElementById('searchRoomInput').value.toLowerCase();
             list.innerHTML = '';
-            
             Object.entries(roomRegistry).forEach(([name, data]) => {
-                if (!name.toLowerCase().includes(searchTerm)) return;
-
+                if (!name.toLowerCase().includes(search)) return;
                 const el = document.createElement('div');
-                el.id = `room-card-${name}`; // Added ID for easy removal
-                el.className = 'bg-white/90 p-4 rounded-2xl border border-white shadow-sm flex items-center justify-between group cursor-pointer hover:bg-white transition-all relative';
+                el.id = `room-card-${name}`;
+                el.className = 'bg-white/90 p-4 rounded-2xl border border-white shadow-sm flex items-center justify-between group cursor-pointer hover:bg-white transition-all';
                 el.innerHTML = `
-                    <div class="flex items-center gap-3 text-left w-full" onclick="attemptJoinRoom({name: '${name}', ...${JSON.stringify(data).replace(/"/g, "&quot;") }})">
+                    <div class="flex items-center gap-3 text-left w-full" onclick='attemptJoinRoom(${JSON.stringify({name, ...data}).replace(/'/g, "&#39;")})'>
                         <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner ${data.type === 'private' ? 'bg-orange-50 text-orange-400' : 'bg-blue-50 text-blue-400'}">
                             ${data.type === 'private' ? '🔒' : '#'}
                         </div>
@@ -564,17 +443,13 @@
                             </div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                         <div class="text-pink-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">เข้าร่วม ➜</div>
-                    </div>
                 `;
                 list.appendChild(el);
             });
         }
 
         function showRoomPassword() {
-            const pass = currentRoomPassword || 'ไม่มีรหัสผ่าน/ไม่ทราบ';
-            document.getElementById('displayRoomPassword').textContent = pass;
+            document.getElementById('displayRoomPassword').textContent = currentRoomPassword || 'ไม่มีรหัสผ่าน';
             openModal('showPasswordModal');
         }
 
@@ -582,18 +457,14 @@
             const name = document.getElementById('newRoomName').value.trim();
             const user = document.getElementById('usernameInput').value.trim();
             const pass = document.getElementById('newRoomPass').value;
-            
-            if(!user || !name) return showToast("ใส่ชื่อและชื่อห้องก่อนครับ");
+            if(!user || !name) return showToast("กรุณาใส่ชื่อเล่นและชื่อห้อง");
             
             currentUsername = user;
-            // Cache password
-            currentRoomPassword = window.newRoomType === 'private' ? pass : ''; 
-            localStorage.setItem('chat_room_password', currentRoomPassword);
-
+            currentRoomPassword = window.newRoomType === 'private' ? pass : '';
             toggleLoading(true);
             const res = await api('createRoom', { name, type: window.newRoomType || 'public', password: pass, creator: user });
             toggleLoading(false);
-            if (res.ok) { closeModal('createRoomModal'); fetchRooms(); enterRoom(name); } else { showToast(res.message || "สร้างห้องไม่สำเร็จ"); }
+            if (res.ok) { closeModal('createRoomModal'); fetchRooms(); enterRoom(name); } else showToast(res.message);
         }
 
         function attemptJoinRoom(room) {
@@ -603,19 +474,12 @@
             if(room.type === 'private') {
                 openModal('passwordPromptModal');
                 document.getElementById('confirmJoinBtn').onclick = () => {
-                    const passInput = document.getElementById('joinRoomPasswordInput').value;
-                    if(passInput === room.password) {
-                        currentRoomPassword = passInput; 
-                        localStorage.setItem('chat_room_password', currentRoomPassword);
-                        closeModal('passwordPromptModal'); 
-                        enterRoom(room.name);
+                    const inp = document.getElementById('joinRoomPasswordInput').value;
+                    if(inp === room.password) {
+                        currentRoomPassword = inp; closeModal('passwordPromptModal'); enterRoom(room.name);
                     } else showToast("รหัสผ่านไม่ถูกต้อง");
                 };
-            } else {
-                currentRoomPassword = ''; 
-                localStorage.setItem('chat_room_password', '');
-                enterRoom(room.name);
-            }
+            } else { currentRoomPassword = ''; enterRoom(room.name); }
         }
 
         async function enterRoom(name) {
@@ -624,22 +488,20 @@
             document.getElementById('lobbyView').classList.add('hidden');
             document.getElementById('chatView').classList.remove('hidden');
             document.getElementById('currentRoomName').textContent = name;
+            document.getElementById('lockIcon').classList.toggle('hidden', !currentRoomPassword);
             
             await loadMessages();
             await updatePresence();
-            
-            pollingIntervals = [
-                setInterval(loadMessages, 4000),
-                setInterval(updatePresence, 10000)
-            ];
+            pollingIntervals = [setInterval(loadMessages, 4000), setInterval(updatePresence, 10000)];
         }
 
         async function updatePresence() {
+            if (!currentUsername || !currentRoom) return;
+
             const users = await api('presence', { room: currentRoom, user: currentUsername });
             if(Array.isArray(users)) {
                 document.getElementById('onlineCountBadge').textContent = users.length;
                 document.getElementById('userCountDetail').textContent = users.length;
-                
                 document.getElementById('onlineUsersList').innerHTML = users.map(u => {
                     const isMe = u.name === currentUsername;
                     return `
@@ -648,80 +510,59 @@
                                 <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${isMe ? 'bg-pink-400' : 'bg-blue-400'}">
                                     ${u.name.charAt(0).toUpperCase()}
                                 </div>
-                                <div class="overflow-hidden">
-                                    <div class="text-sm font-medium text-gray-700 flex items-center gap-1 text-left truncate">
-                                        ${u.name} ${isMe ? '<span class="text-[9px] text-pink-400">(คุณ)</span>' : ''}
-                                    </div>
-                                </div>
+                                <div class="text-sm font-medium text-gray-700 truncate">${u.name} ${isMe ? '<span class="text-[9px] text-pink-400">(คุณ)</span>' : ''}</div>
                             </div>
-                            <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0"></div>
+                            <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
                         </div>
                     `;
                 }).join('');
             }
         }
 
-        async function deleteMsg(id) {
-            if (!confirm("ลบข้อความนี้?")) return;
-
-            // Optimistic UI update
-            const originalMessages = [...messages];
-            messages = messages.filter(m => String(m.id) !== String(id));
-            renderMessages();
-
-            const res = await api('deleteMessage', {
-                room: currentRoom,
-                id: id,
-                user: currentUsername 
-            });
-
-            if (res.ok) {
-                showToast("ลบข้อความแล้ว");
-                loadMessages(); 
-            } else {
-                messages = originalMessages;
-                renderMessages();
-                showToast("ลบข้อความไม่สำเร็จ");
-            }
-        }
-
         async function loadMessages() {
             if (!currentRoom) return;
-
             const msgs = await api('getMessages', { room: currentRoom });
-            if (!Array.isArray(msgs)) return;
-
-            messages = msgs;
-            renderMessages();
+            if (Array.isArray(msgs)) { messages = msgs; renderMessages(); }
         }
 
         function renderMessages() {
             const list = document.getElementById('messagesList');
             list.innerHTML = messages.map(m => {
-                if(m.isSystem && !m.text.startsWith("CMD:")) return `<div class="text-center my-2 text-[10px] text-gray-400 uppercase font-bold">${m.text}</div>`;
-                if(m.text?.startsWith("CMD:")) return '';
+                if(m.isSystem) return `<div class="text-center my-2 text-[10px] text-gray-400 uppercase font-bold">${m.text}</div>`;
                 const isMe = m.user === currentUsername;
-                const msgId = String(m.id || "");
-                
-                // Add cursor-pointer and onclick to image
-                const imageHtml = m.file ? 
-                    `<img src="${m.file}" class="mt-2 rounded-lg max-h-40 w-full object-cover cursor-pointer hover:opacity-90 transition-opacity" onclick="openImageViewer('${m.file}')">` 
-                    : '';
-
-                return `<div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up relative group"><div class="max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}">${!isMe ? `<span class="text-[10px] text-gray-400 mb-1 ml-1 flex items-center gap-1">${m.user}</span>` : ''}<div class="p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-pink-500 text-white rounded-br-sm' : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'}">${m.text || ''}${imageHtml}${isMe ? `<button onclick="deleteMsg('${msgId}')" class="absolute -top-2 -left-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow text-[10px] opacity-60 hover:opacity-100 transition-opacity">🗑️</button>` : ''}</div></div></div>`;
+                const imgHtml = m.file ? `<img src="${m.file}" class="mt-2 rounded-lg max-h-40 w-full object-cover cursor-pointer" onclick="openImageViewer('${m.file}')">` : '';
+                return `
+                    <div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up">
+                        <div class="max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                            ${!isMe ? `<span class="text-[10px] text-gray-400 mb-1 ml-1">${m.user}</span>` : ''}
+                            <div class="p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-pink-500 text-white rounded-br-sm' : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'}">
+                                ${m.text || ''}${imgHtml}
+                                ${isMe ? `<button onclick="deleteMsg('${m.id}')" class="absolute -top-2 -left-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow text-[10px]">🗑️</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
             }).join('');
             list.scrollTo(0, list.scrollHeight);
         }
 
         async function sendMessage() {
             const input = document.getElementById('messageInput');
-            if(!input.value.trim()) return;
-            await api('addMessage', { room: currentRoom, user: currentUsername, text: input.value });
-            input.value = ''; loadMessages();
+            const val = input.value.trim();
+            if(!val) return;
+            input.value = '';
+            await api('addMessage', { room: currentRoom, user: currentUsername, text: val });
+            loadMessages();
         }
 
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
+        async function deleteMsg(id) {
+            if (!confirm("ลบข้อความนี้?")) return;
+            await api('deleteMessage', { room: currentRoom, id, user: currentUsername });
+            loadMessages();
+        }
+
+        async function handleFileUpload(e) {
+            const file = e.target.files[0];
             if (!file || file.size > 300000) return showToast("ไฟล์ต้องเล็กกว่า 300KB");
             const reader = new FileReader();
             reader.onload = async (ev) => {
@@ -732,33 +573,12 @@
             reader.readAsDataURL(file);
         }
 
+        // Music Logic
         function applyRadioState() {
-            const station = radioStations[musicState.playingIndex];
-            if (!station) return;
-
+            const s = radioStations[musicState.playingIndex];
             if (musicState.isPlaying) {
-                if (audio.src !== station.src) {
-                    showToast("🎵 กำลังโหลดเพลง... (รอสักครู่)");
-                    audio.src = station.src;
-                    // Removed redundant audio.load() to let the browser handle the new src
-                }
-                
-                const playPromise = audio.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        // Ignore AbortError caused by rapid track switching
-                        if (error.name === 'AbortError' || error.message.includes('interrupted')) {
-                            console.log("Play request interrupted (likely track switch)");
-                            return; 
-                        }
-                        
-                        console.error("Play error:", error);
-                        musicState.isPlaying = false;
-                        updateRadioUI();
-                        showToast("❌ เล่นเพลงไม่ได้: " + error.message);
-                    });
-                }
-                
+                if(audio.src !== s.src) audio.src = s.src;
+                audio.play().catch(() => { musicState.isPlaying = false; updateRadioUI(); });
                 document.getElementById("miniPlayer").classList.remove("hidden");
                 document.getElementById("playerDisc").classList.add("disk-spin");
             } else {
@@ -771,62 +591,26 @@
 
         function updateRadioUI() {
             const s = radioStations[musicState.playingIndex];
-            if (s) {
-                document.getElementById('playerSongTitle').textContent = s.title;
-                document.getElementById('miniSongTitle').textContent = s.title;
-            }
+            document.getElementById('playerSongTitle').textContent = s.title;
+            document.getElementById('miniSongTitle').textContent = s.title;
             document.getElementById('playerPlayBtn').textContent = musicState.isPlaying ? '⏸' : '▶';
             renderRadioList();
         }
 
-        window.toggleMusicPlayback = async () => {
-            musicState.playingIndex = musicState.playingIndex || 0;
-            musicState.isPlaying = !musicState.isPlaying;
-            applyRadioState();
+        window.toggleMusicPlayback = () => { musicState.isPlaying = !musicState.isPlaying; applyRadioState(); };
+        window.stopMusicPlayback = () => { musicState.isPlaying = false; applyRadioState(); };
+        window.changeTrackTo = (i) => { musicState.playingIndex = i; musicState.isPlaying = true; applyRadioState(); };
+        window.changeTrack = (d) => {
+            musicState.playingIndex = (musicState.playingIndex + d + radioStations.length) % radioStations.length;
+            musicState.isPlaying = true; applyRadioState();
         };
-
-        window.stopMusicPlayback = async () => {
-            musicState.isPlaying = false;
-            applyRadioState();
-        };
-
-        window.changeTrackTo = async (idx) => {
-            musicState.playingIndex = idx;
-            musicState.isPlaying = true;
-            applyRadioState();
-        };
-
-        window.changeTrack = (dir) => {
-            const next = (musicState.playingIndex + dir + radioStations.length) % radioStations.length;
-            window.changeTrackTo(next);
-        };
-
-        function addNewRadioStation() {
-            const url = document.getElementById('radioUrlInput').value.trim();
-            if (!url.startsWith('http')) return showToast("ลิงก์ไม่ถูกต้อง");
-            radioStations.push({ title: "Custom Radio", artist: "Custom Stream", src: url });
-            document.getElementById('radioUrlInput').value = ""; renderRadioList(); showToast("เพิ่มสถานีแล้ว");
-        }
-
-        function deleteStation(idx, event) {
-            event.stopPropagation();
-            if (radioStations.length <= 1) return;
-            radioStations.splice(idx, 1);
-            if (musicState.playingIndex >= idx) musicState.playingIndex = Math.max(0, musicState.playingIndex - 1);
-            renderRadioList();
-        }
 
         function renderRadioList() {
-            const container = document.getElementById('playlistContainer');
-            container.innerHTML = radioStations.map((s, i) => `
-                <div onclick="changeTrackTo(${i})" class="p-2.5 rounded-xl flex items-center justify-between group transition-all ${musicState.playingIndex === i ? 'bg-pink-50' : 'hover:bg-gray-50'}">
+            document.getElementById('playlistContainer').innerHTML = radioStations.map((s, i) => `
+                <div onclick="changeTrackTo(${i})" class="p-2.5 rounded-xl flex items-center justify-between transition-all ${musicState.playingIndex === i ? 'bg-pink-50' : 'hover:bg-gray-50'}">
                     <div class="flex items-center gap-3 overflow-hidden text-left">
                         <span class="text-[10px] font-bold ${musicState.playingIndex === i ? 'text-pink-500' : 'text-gray-400'}">${i+1}</span>
-                        <div class="overflow-hidden"><div class="text-xs font-bold text-gray-700 truncate">${s.title}</div></div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        ${musicState.playingIndex === i && musicState.isPlaying ? '<span class="animate-pulse text-xs text-pink-500">📻</span>' : ''}
-                        <button onclick="deleteStation(${i}, event)" class="opacity-0 group-hover:opacity-100 p-1 text-gray-300 hover:text-red-500">🗑️</button>
+                        <div class="text-xs font-bold text-gray-700 truncate">${s.title}</div>
                     </div>
                 </div>
             `).join('');
@@ -834,84 +618,26 @@
 
         window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
         window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
-        
-        window.leaveRoom = async () => { 
-            // 1. UI Updates Immediately (Fast Exit)
-            document.getElementById('chatView').classList.add('hidden');
-            document.getElementById('lobbyView').classList.remove('hidden');
-            
-            // Stop Music Immediately
-            audio.pause();
-            audio.currentTime = 0;
-            audio.src = "";
-            audio.load();
-            musicState.isPlaying = false;
-            applyRadioState();
-            
-            // Clear Intervals
-            pollingIntervals.forEach(clearInterval);
-
-            const roomToLeave = currentRoom; // Cache room ID
-            const currentUser = currentUsername;
-            // Use CACHED password that we saved upon entry/creation
-            const roomPassword = currentRoomPassword; 
-
-            currentRoom = null; // Clear global state immediately
-            localStorage.removeItem('chat_room_password'); // Clear password on exit
-
-            // 2. Background Operations (Fire and Forget)
-            if (roomToLeave) {
-                try {
-                    // Check presence to decide on delete
-                    const users = await api('presence', { room: roomToLeave, user: currentUser });
-                    const isLastOne = Array.isArray(users) && users.length <= 1;
-
-                    // Leave API
-                    await api('leaveRoom', { room: roomToLeave, user: currentUser });
-
-                    // Auto-delete if last one (Silent)
-                    if (isLastOne) {
-                        await api('deleteRoom', { 
-                            name: roomToLeave, 
-                            room: roomToLeave,
-                            password: roomPassword,
-                            user: currentUser
-                        });
-                    }
-                } catch (e) {
-                    console.error("Error leaving room:", e);
-                }
-            }
-            
-            // Refresh lobby
-            fetchRooms();
-        };
-        
-        // Add tab close listener
-        window.addEventListener('beforeunload', () => {
-            if(currentRoom) {
-                // Best effort to leave
-                const roomPassword = currentRoomPassword;
-                const roomToLeave = currentRoom;
-                
-                // Use navigator.sendBeacon if possible for reliable background send
-                // Since our API expects POST body JSON, we try a simple fetch with keepalive first
-                // Note: Standard fetch keepalive is best for modern browsers
-                api('leaveRoom', { room: roomToLeave, user: currentUsername });
-                
-                // Note: Deleting room on unload is risky because we can't await checking count
-                // Rely on the next person who loads lobby to clean it up via fetchRoomCounts logic
-            }
-        });
-        
         window.togglePlayerModal = () => { openModal('musicModal'); renderRadioList(); };
         window.toggleUserListModal = () => { openModal('userModal'); updatePresence(); };
-        
-        window.setNewRoomType = (type) => { 
-            window.newRoomType = type;
-            document.getElementById('typePublicBtn').className = `flex-1 p-2 rounded-xl text-xs font-bold ${type === 'public' ? 'bg-pink-100 text-pink-500 border-2 border-pink-400' : 'bg-gray-50 text-gray-400'}`;
-            document.getElementById('typePrivateBtn').className = `flex-1 p-2 rounded-xl text-xs font-bold ${type === 'private' ? 'bg-orange-100 text-orange-500 border-2 border-orange-400' : 'bg-gray-50 text-gray-400'}`;
-            document.getElementById('newRoomPass').classList.toggle('hidden', type !== 'private');
+
+        // ✅ FIX 3: แก้ leaveRoom เคลียร์ Cache และโหลดใหม่
+        window.leaveRoom = async () => {
+            document.getElementById('chatView').classList.add('hidden');
+            document.getElementById('lobbyView').classList.remove('hidden');
+            audio.pause(); pollingIntervals.forEach(clearInterval);
+            if(currentRoom) await api('leaveRoom', { room: currentRoom, user: currentUsername });
+            
+            currentRoom = null;
+            roomRegistry = {};   // ⭐ reset cache
+            fetchRooms(true);    // ⭐ force reload
+        };
+
+        window.setNewRoomType = (t) => {
+            window.newRoomType = t;
+            document.getElementById('typePublicBtn').className = `flex-1 p-2 rounded-xl text-xs font-bold ${t === 'public' ? 'bg-pink-100 text-pink-500 border-2 border-pink-400' : 'bg-gray-50 text-gray-400'}`;
+            document.getElementById('typePrivateBtn').className = `flex-1 p-2 rounded-xl text-xs font-bold ${t === 'private' ? 'bg-orange-100 text-orange-500 border-2 border-orange-400' : 'bg-gray-50 text-gray-400'}`;
+            document.getElementById('newRoomPass').classList.toggle('hidden', t !== 'private');
         };
 
         document.getElementById('usernameInput').value = currentUsername;
