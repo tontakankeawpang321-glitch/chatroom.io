@@ -264,9 +264,9 @@
             showToast("❌ โหลดไฟล์เพลงไม่สำเร็จ");
         };
 
+        // 🔧 แก้จุดที่ 1: ตรวจสอบหัวห้องจากตัวแปร actingAdmin โดยตรง
         function isRealRoomAdmin() {
-            if (!currentRoom || !roomRegistry[currentRoom]) return false;
-            return roomRegistry[currentRoom].admin === currentUsername;
+            return actingAdmin === currentUsername;
         }
 
         async function api(action, payload = {}) {
@@ -371,7 +371,7 @@
             ];
         }
 
-        // 🔥 อัปเกรด updatePresence: ระบบหัวห้องอัตโนมัติ
+        // 🔥 อัปเกรด updatePresence: ระบบหัวห้องอัตโนมัติ (แก้ไขจุดที่ 3)
         async function updatePresence() {
             // ดึงข้อมูลห้องล่าสุดเพื่อให้แน่ใจว่า admin ตรงกัน
             const rooms = await api('getRooms');
@@ -386,7 +386,12 @@
                 const adminOnline = users.some(u => u.name === currentAdmin);
 
                 // 2. ถ้าหัวห้องเป็น System หรือ หัวห้องไม่อยู่แล้ว
-                if ((currentAdmin === 'System' || !adminOnline) && users.length > 0) {
+                // 🔧 แก้จุดที่ 3: ป้องกัน override ถ้า local เราอัปเดตไปแล้ว
+                if (
+                   (currentAdmin === 'System' || !adminOnline) &&
+                   users.length > 0 &&
+                   actingAdmin === currentAdmin // 🔥 ป้องกัน override
+                ) {
                     // 3. เรียงชื่อตามตัวอักษร ใครมาก่อน/ชื่อแรก รับสิทธิ์ไป
                     const candidates = [...users].sort((a, b) => a.name.localeCompare(b.name));
                     const newAdmin = candidates[0];
@@ -448,15 +453,26 @@
             closeModal('userModal');
         }
 
+        // 🔧 แก้จุดที่ 2: อัปเดต actingAdmin ให้เร็วขึ้นทันที
         async function approveAdmin(newAdminName) {
             await api('setAdmin', { room: currentRoom, newAdmin: newAdminName });
-            await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:SYSTEM:GRANT_ADMIN:${newAdminName}`, isSystem: true });
-            if (actingAdmin !== 'System') showToast(`โอนหัวห้องให้ ${newAdminName} แล้ว`);
-            const rooms = await api('getRooms');
-            if (rooms && !rooms.error) {
-                roomRegistry = rooms;
-                actingAdmin = roomRegistry[currentRoom]?.admin || 'System';
+
+            // 🔥 บังคับอัปเดตทันที
+            actingAdmin = newAdminName;
+
+            await api('addMessage', { 
+                room: currentRoom, 
+                user: currentUsername, 
+                text: `CMD:SYSTEM:GRANT_ADMIN:${newAdminName}`, 
+                isSystem: true 
+            });
+
+            // อัปเดต local registry ด้วยเพื่อความชัวร์
+            if (roomRegistry[currentRoom]) {
+                roomRegistry[currentRoom].admin = newAdminName;
             }
+
+            showToast(`👑 ${newAdminName} เป็นหัวห้องแล้ว`);
             loadMessages();
             updatePresence();
         }
