@@ -447,7 +447,8 @@
             toggleLoading(true);
             const res = await api('deleteRoom', {
                 name: roomToDelete,
-                password: password
+                password: password,
+                user: currentUsername // ส่ง user ไปด้วย
             });
             toggleLoading(false);
 
@@ -470,7 +471,8 @@
             const res = await api('changePassword', {
                 room: currentRoom,
                 oldPassword: oldPass,
-                newPassword: newPass
+                newPassword: newPass,
+                user: currentUsername // ส่ง user ไปด้วย
             });
             toggleLoading(false);
 
@@ -736,7 +738,14 @@
             }
 
             pollingIntervals.forEach(clearInterval); 
-            audio.pause(); audio.src=""; currentRoom = null;
+            // Music Reset Logic
+            audio.pause();
+            audio.currentTime = 0;
+            audio.src = "";
+            audio.load(); // Force stop downloading/buffering
+            musicState.isPlaying = false;
+            
+            currentRoom = null;
             document.getElementById('chatView').classList.add('hidden'); 
             document.getElementById('lobbyView').classList.remove('hidden'); 
             fetchRooms(); 
