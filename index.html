@@ -250,10 +250,11 @@
         let audioUnlocked = false;
         
         let radioStations = [
-            { title: "เพลงที่ 1", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/001.mp3" },
-            { title: "เพลงที่ 2", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/002.mp3" },
-            { title: "เพลงที่ 3", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/003.mp3" },
-            { title: "เพลงที่ 4", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/004.mp3" }
+            { title: "สากล", artist: "Live Radio", src: "http://27.254.142.208:8400/stream" },
+            { title: "สตริง", artist: "Live Radio", src: "http://27.254.142.208:8100/stream" },
+            { title: "ลูกทุ่ง", artist: "Live Radio", src: "http://27.254.142.208:8200/stream" },
+            { title: "เพื่อชีวิต", artist: "Live Radio", src: "http://27.254.142.208:8300/stream" },
+            { title: "แดนซ์", artist: "Live Radio", src: "http://27.254.142.208:8500/stream" }
         ];
 
         const audio = document.getElementById("mainAudio");
@@ -500,7 +501,12 @@
                     return !isDeleted && (!m.isSystem || isNormalSystem || m.text?.startsWith("CMD:SYSTEM:REQ_ADMIN:") || m.text?.startsWith("CMD:SYSTEM:GRANT_ADMIN:"));
                 });
                 const lastRadioCmd = visibleMsgs.filter(m => m.text?.startsWith('CMD:RADIO:')).pop();
-                if (lastRadioCmd && lastRadioCmd.user !== currentUsername) syncRadioFromCommand(lastRadioCmd.text);
+                
+                // 🔥 ลบเงื่อนไข lastRadioCmd.user !== currentUsername ออก เพื่อให้คนเข้าใหม่ (หรือรีเฟรช) ซิงค์เพลงเสมอ
+                if (lastRadioCmd) {
+                    syncRadioFromCommand(lastRadioCmd.text);
+                }
+
                 if (JSON.stringify(visibleMsgs) !== JSON.stringify(messages)) {
                     messages = visibleMsgs;
                     renderMessages();
@@ -567,7 +573,8 @@
             const station = radioStations[musicState.playingIndex];
             if (!station) return;
             if (musicState.isPlaying) {
-                if (audio.src !== station.src) {
+                // สำหรับ Live Stream บังคับโหลดใหม่เพื่อให้เป็นปัจจุบันที่สุดเสมอ
+                if (audio.src !== station.src || station.src.startsWith('http')) {
                     audio.pause();
                     audio.src = station.src;
                     audio.load();
@@ -596,10 +603,7 @@
         }
 
         window.toggleMusicPlayback = async () => {
-            if (!isRealRoomAdmin()) {
-              return showToast("เฉพาะหัวห้องควบคุมเพลงได้");
-            }
-
+            // REMOVED ADMIN CHECK HERE
             if (!audioUnlocked) {
                 try {
                     audio.muted = true;
@@ -615,18 +619,14 @@
         };
 
         window.stopMusicPlayback = async () => {
-            if (!isRealRoomAdmin()) {
-              return showToast("เฉพาะหัวห้องควบคุมเพลงได้");
-            }
+            // REMOVED ADMIN CHECK HERE
             musicState.isPlaying = false;
             applyRadioState();
             await api('addMessage', { room: currentRoom, user: currentUsername, text: `CMD:RADIO:STOP:0`, isSystem: true });
         };
 
         window.changeTrackTo = async (idx) => {
-            if (!isRealRoomAdmin()) {
-              return showToast("เฉพาะหัวห้องควบคุมเพลงได้");
-            }
+            // REMOVED ADMIN CHECK HERE
             musicState.playingIndex = idx;
             musicState.isPlaying = true;
             applyRadioState();
