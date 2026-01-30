@@ -410,14 +410,10 @@
             }
         }
 
-        // ✅ FIX 1 & 2: แก้ fetchRoomCounts ใหม่ทั้งฟังก์ชัน
         async function fetchRoomCounts(roomNames) {
             for (const room of roomNames) {
-                // ❌ lobby ไม่ควรยิง presence ให้แสดง 0 ไปก่อน
                 const countEl = document.getElementById(`count-${room}`);
                 if (countEl) countEl.innerHTML = `👤 0`;
-                
-                // ❌ ลบ block ที่สั่ง deleteRoom ออกทั้งก้อน เพื่อความปลอดภัย
             }
         }
 
@@ -467,19 +463,32 @@
             if (res.ok) { closeModal('createRoomModal'); fetchRooms(); enterRoom(name); } else showToast(res.message);
         }
 
-        function attemptJoinRoom(room) {
+        async function attemptJoinRoom(room) {
+            const latestRooms = await api('getRooms');
+            if (!latestRooms[room.name]) {
+                showToast("ห้องนี้ถูกปิดหรือถูกลบแล้ว");
+                fetchRooms(true);
+                return;
+            }
+
             const user = document.getElementById('usernameInput').value.trim();
             if(!user) return showToast("กรุณาใส่ชื่อเล่นก่อนครับ");
+
             currentUsername = user;
             if(room.type === 'private') {
                 openModal('passwordPromptModal');
                 document.getElementById('confirmJoinBtn').onclick = () => {
                     const inp = document.getElementById('joinRoomPasswordInput').value;
                     if(inp === room.password) {
-                        currentRoomPassword = inp; closeModal('passwordPromptModal'); enterRoom(room.name);
+                        currentRoomPassword = inp;
+                        closeModal('passwordPromptModal');
+                        enterRoom(room.name);
                     } else showToast("รหัสผ่านไม่ถูกต้อง");
                 };
-            } else { currentRoomPassword = ''; enterRoom(room.name); }
+            } else {
+                currentRoomPassword = '';
+                enterRoom(room.name);
+            }
         }
 
         async function enterRoom(name) {
@@ -521,8 +530,17 @@
 
         async function loadMessages() {
             if (!currentRoom) return;
+
             const msgs = await api('getMessages', { room: currentRoom });
-            if (Array.isArray(msgs)) { messages = msgs; renderMessages(); }
+
+            if (!Array.isArray(msgs)) {
+                showToast("ห้องนี้ถูกปิดแล้ว");
+                leaveRoom();
+                return;
+            }
+
+            messages = msgs;
+            renderMessages();
         }
 
         function renderMessages() {
@@ -555,10 +573,29 @@
             loadMessages();
         }
 
+        // ✅ แก้ไข deleteMsg() เพิ่ม Optimistic UI และ Sync Delay
         async function deleteMsg(id) {
+            const msgId = String(id);
             if (!confirm("ลบข้อความนี้?")) return;
-            await api('deleteMessage', { room: currentRoom, id, user: currentUsername });
-            loadMessages();
+
+            // 1. Optimistic Update: ลบออกทันทีจากหน้าจอผู้ใช้
+            const backup = [...messages];
+            messages = messages.filter(m => String(m.id) !== msgId);
+            renderMessages();
+
+            // 2. เรียก API ลบจริง
+            const res = await api('deleteMessage', { room: currentRoom, id: msgId, user: currentUsername });
+            
+            if (!res.ok) {
+                showToast(res.message || "ลบข้อความไม่สำเร็จ");
+                // 3. Rollback: ถ้าลบพลาด ดึงข้อมูลกลับมา
+                messages = backup;
+                renderMessages();
+            } else {
+                showToast("ลบข้อความแล้ว");
+                // 4. Delayed Sync: รอให้ DB อัปเดตเสร็จก่อนค่อยดึงข้อมูลใหม่ (ป้องกัน Race Condition)
+                setTimeout(loadMessages, 500);
+            }
         }
 
         async function handleFileUpload(e) {
@@ -573,7 +610,6 @@
             reader.readAsDataURL(file);
         }
 
-        // Music Logic
         function applyRadioState() {
             const s = radioStations[musicState.playingIndex];
             if (musicState.isPlaying) {
@@ -621,7 +657,6 @@
         window.togglePlayerModal = () => { openModal('musicModal'); renderRadioList(); };
         window.toggleUserListModal = () => { openModal('userModal'); updatePresence(); };
 
-        // ✅ FIX 3: แก้ leaveRoom เคลียร์ Cache และโหลดใหม่
         window.leaveRoom = async () => {
             document.getElementById('chatView').classList.add('hidden');
             document.getElementById('lobbyView').classList.remove('hidden');
@@ -629,8 +664,8 @@
             if(currentRoom) await api('leaveRoom', { room: currentRoom, user: currentUsername });
             
             currentRoom = null;
-            roomRegistry = {};   // ⭐ reset cache
-            fetchRooms(true);    // ⭐ force reload
+            roomRegistry = {};
+            fetchRooms(true);
         };
 
         window.setNewRoomType = (t) => {
