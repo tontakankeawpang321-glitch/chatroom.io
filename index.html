@@ -139,8 +139,9 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-                <button onclick="openModal('changePasswordModal')" class="p-2 rounded-full border transition-all bg-yellow-50 border-yellow-100 text-yellow-500 hover:bg-yellow-100">
-                    🔑
+                <!-- ปุ่มดูรหัสผ่านห้อง -->
+                <button onclick="showRoomPassword()" class="p-2 rounded-full border transition-all bg-yellow-50 border-yellow-100 text-yellow-500 hover:bg-yellow-100">
+                    👁️
                 </button>
                 <button id="musicToggleBtn" onclick="togglePlayerModal()" class="p-2 rounded-full border transition-all bg-gray-50 border-gray-100 text-gray-400 hover:text-pink-500 hover:border-pink-200">
                     📻
@@ -268,34 +269,16 @@
         </div>
     </div>
 
-    <!-- Delete Room Modal -->
-    <div id="deleteRoomModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-6">
-        <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-6 animate-slide-up text-center border-4 border-red-100">
-            <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl">🗑️</div>
-            <div>
-                <h2 class="text-xl font-bold text-gray-800">ลบห้อง <span id="deleteRoomTarget" class="text-red-500"></span></h2>
-                <p class="text-xs text-gray-400 mt-1">ต้องใส่รหัสผ่านเพื่อยืนยันการลบ</p>
-            </div>
-            <input id="deleteRoomPasswordInput" type="password" class="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 outline-none text-center text-lg tracking-widest font-bold" placeholder="รหัสผ่าน...">
-            <div class="flex gap-2">
-                <button onclick="closeModal('deleteRoomModal')" class="flex-1 py-3 text-gray-400 font-bold">ยกเลิก</button>
-                <button onclick="executeDeleteRoom()" class="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-md hover:bg-red-600">ลบห้อง</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Change Password Modal -->
-    <div id="changePasswordModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-6">
+    <!-- Show Password Modal -->
+    <div id="showPasswordModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-6">
         <div class="bg-white w-full max-w-xs rounded-3xl p-8 shadow-2xl space-y-6 animate-slide-up text-center border-4 border-yellow-100">
             <div class="w-16 h-16 bg-yellow-100 text-yellow-500 rounded-full flex items-center justify-center mx-auto text-2xl">🔑</div>
-            <h2 class="text-xl font-bold text-gray-800">เปลี่ยนรหัสผ่านห้อง</h2>
-            <div class="space-y-3">
-                <input id="oldRoomPassword" type="password" class="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 outline-none text-center" placeholder="รหัสผ่านเดิม (ถ้ามี)">
-                <input id="newRoomPassword" type="password" class="w-full bg-yellow-50 border border-yellow-200 rounded-xl p-3 outline-none text-center font-bold" placeholder="รหัสผ่านใหม่">
+            <h2 class="text-xl font-bold text-gray-800">รหัสผ่านห้องนี้</h2>
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <div id="displayRoomPassword" class="text-2xl font-bold text-gray-700 tracking-widest"></div>
             </div>
             <div class="flex gap-2">
-                <button onclick="closeModal('changePasswordModal')" class="flex-1 py-3 text-gray-400 font-bold">ยกเลิก</button>
-                <button onclick="executeChangePassword()" class="flex-1 py-3 bg-yellow-400 text-white rounded-xl font-bold shadow-md hover:bg-yellow-500">เปลี่ยน</button>
+                <button onclick="closeModal('showPasswordModal')" class="flex-1 py-3 bg-yellow-400 text-white rounded-xl font-bold shadow-md hover:bg-yellow-500">ตกลง</button>
             </div>
         </div>
     </div>
@@ -308,12 +291,12 @@
         // State Management
         let currentUsername = localStorage.getItem('chat_username') || '';
         let currentRoom = null;
+        let currentRoomPassword = localStorage.getItem('chat_room_password') || ''; 
         let roomRegistry = {};
         let messages = [];
         let pollingIntervals = [];
         let musicState = { playingIndex: 0, isPlaying: false };
         let audioUnlocked = false;
-        let roomToDelete = null;
         
         let radioStations = [
             { title: "001 ใจฉันตามเธอไป - YOUNGOHM", artist: "My Playlist", src: "https://drive-music-server.onrender.com/music/001.mp3" },
@@ -330,7 +313,7 @@
         audio.onplaying = () => showToast("🎵 กำลังเล่นเพลง");
         audio.onerror = (e) => {
             console.error("❌ audio error", e);
-            showToast("❌ โหลดไฟล์เพลงไม่สำเร็จ");
+            showToast("❌ โหลดไฟล์เพลงไม่สำเร็จ (Server อาจหลับ)");
         };
 
         // Time Update Listener
@@ -423,74 +406,33 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                         <div class="text-pink-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity mr-2">เข้าร่วม</div>
-                         <button onclick="promptDeleteRoom('${name}')" class="w-8 h-8 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 flex items-center justify-center transition-colors z-10">
-                            🗑️
-                         </button>
+                         <div class="text-pink-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">เข้าร่วม ➜</div>
                     </div>
                 `;
                 list.appendChild(el);
             });
         }
 
-        function promptDeleteRoom(name) {
-            roomToDelete = name;
-            document.getElementById('deleteRoomTarget').textContent = name;
-            document.getElementById('deleteRoomPasswordInput').value = '';
-            openModal('deleteRoomModal');
-        }
-
-        async function executeDeleteRoom() {
-            const password = document.getElementById('deleteRoomPasswordInput').value;
-            if(!roomToDelete) return;
-
-            toggleLoading(true);
-            const res = await api('deleteRoom', {
-                name: roomToDelete,
-                password: password,
-                user: currentUsername // ส่ง user ไปด้วย
-            });
-            toggleLoading(false);
-
-            if (res.ok) {
-                showToast(`ลบห้อง ${roomToDelete} สำเร็จ`);
-                closeModal('deleteRoomModal');
-                fetchRooms();
-            } else {
-                showToast(res.message || "ลบห้องไม่สำเร็จ (รหัสผิด?)");
-            }
-        }
-
-        async function executeChangePassword() {
-            const oldPass = document.getElementById('oldRoomPassword').value;
-            const newPass = document.getElementById('newRoomPassword').value;
-            
-            if (!newPass) return showToast("กรุณาใส่รหัสผ่านใหม่");
-
-            toggleLoading(true);
-            const res = await api('changePassword', {
-                room: currentRoom,
-                oldPassword: oldPass,
-                newPassword: newPass,
-                user: currentUsername // ส่ง user ไปด้วย
-            });
-            toggleLoading(false);
-
-            if (res.ok) {
-                showToast("เปลี่ยนรหัสผ่านสำเร็จ");
-                closeModal('changePasswordModal');
-            } else {
-                showToast(res.message || "เปลี่ยนรหัสไม่สำเร็จ");
-            }
+        function showRoomPassword() {
+            const pass = currentRoomPassword || 'ไม่มีรหัสผ่าน/ไม่ทราบ';
+            document.getElementById('displayRoomPassword').textContent = pass;
+            openModal('showPasswordModal');
         }
 
         async function createRoom() {
             const name = document.getElementById('newRoomName').value.trim();
             const user = document.getElementById('usernameInput').value.trim();
+            const pass = document.getElementById('newRoomPass').value;
+            
             if(!user || !name) return showToast("ใส่ชื่อและชื่อห้องก่อนครับ");
+            
             currentUsername = user;
+            // Cache password
+            currentRoomPassword = window.newRoomType === 'private' ? pass : ''; 
+            localStorage.setItem('chat_room_password', currentRoomPassword);
+
             toggleLoading(true);
-            const res = await api('createRoom', { name, type: window.newRoomType || 'public', password: document.getElementById('newRoomPass').value, creator: user });
+            const res = await api('createRoom', { name, type: window.newRoomType || 'public', password: pass, creator: user });
             toggleLoading(false);
             if (res.ok) { closeModal('createRoomModal'); fetchRooms(); enterRoom(name); } else { showToast(res.message || "สร้างห้องไม่สำเร็จ"); }
         }
@@ -502,11 +444,19 @@
             if(room.type === 'private') {
                 openModal('passwordPromptModal');
                 document.getElementById('confirmJoinBtn').onclick = () => {
-                    if(document.getElementById('joinRoomPasswordInput').value === room.password) {
-                        closeModal('passwordPromptModal'); enterRoom(room.name);
+                    const passInput = document.getElementById('joinRoomPasswordInput').value;
+                    if(passInput === room.password) {
+                        currentRoomPassword = passInput; 
+                        localStorage.setItem('chat_room_password', currentRoomPassword);
+                        closeModal('passwordPromptModal'); 
+                        enterRoom(room.name);
                     } else showToast("รหัสผ่านไม่ถูกต้อง");
                 };
-            } else enterRoom(room.name);
+            } else {
+                currentRoomPassword = ''; 
+                localStorage.setItem('chat_room_password', '');
+                enterRoom(room.name);
+            }
         }
 
         async function enterRoom(name) {
@@ -555,22 +505,21 @@
         async function deleteMsg(id) {
             if (!confirm("ลบข้อความนี้?")) return;
 
-            // Optimistic UI update: Remove immediately from view
-            const originalMessages = [...messages]; // Backup for rollback
+            // Optimistic UI update
+            const originalMessages = [...messages];
             messages = messages.filter(m => String(m.id) !== String(id));
             renderMessages();
 
             const res = await api('deleteMessage', {
                 room: currentRoom,
                 id: id,
-                user: currentUsername // Add user for verification
+                user: currentUsername 
             });
 
             if (res.ok) {
                 showToast("ลบข้อความแล้ว");
-                loadMessages(); // Sync with server
+                loadMessages(); 
             } else {
-                // Rollback if failed
                 messages = originalMessages;
                 renderMessages();
                 showToast("ลบข้อความไม่สำเร็จ");
@@ -593,11 +542,8 @@
                 if(m.isSystem && !m.text.startsWith("CMD:")) return `<div class="text-center my-2 text-[10px] text-gray-400 uppercase font-bold">${m.text}</div>`;
                 if(m.text?.startsWith("CMD:")) return '';
                 const isMe = m.user === currentUsername;
-                
-                // Ensure ID is passed as string, fallback to empty string if undefined to prevent errors
                 const msgId = String(m.id || "");
                 
-                // Updated button class: removed opacity-0 group-hover:opacity-100, added opacity-60 hover:opacity-100
                 return `<div class="flex ${isMe ? 'justify-end' : 'justify-start'} animate-slide-up relative group"><div class="max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}">${!isMe ? `<span class="text-[10px] text-gray-400 mb-1 ml-1 flex items-center gap-1">${m.user}</span>` : ''}<div class="p-3 rounded-2xl text-sm shadow-sm relative ${isMe ? 'bg-pink-500 text-white rounded-br-sm' : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'}">${m.text || ''}${m.file ? `<img src="${m.file}" class="mt-2 rounded-lg max-h-40 w-full object-cover">` : ''}${isMe ? `<button onclick="deleteMsg('${msgId}')" class="absolute -top-2 -left-2 bg-white text-red-500 rounded-full w-5 h-5 flex items-center justify-center shadow text-[10px] opacity-60 hover:opacity-100 transition-opacity">🗑️</button>` : ''}</div></div></div>`;
             }).join('');
             list.scrollTo(0, list.scrollHeight);
@@ -625,15 +571,24 @@
         function applyRadioState() {
             const station = radioStations[musicState.playingIndex];
             if (!station) return;
+
             if (musicState.isPlaying) {
                 if (audio.src !== station.src) {
-                    audio.pause();
+                    showToast("🎵 กำลังโหลดเพลง... (รอสักครู่)");
                     audio.src = station.src;
                     audio.load();
                 }
-                audio.play().catch(() => {
-                    console.warn("Autoplay blocked");
-                });
+                
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.error("Play error:", error);
+                        musicState.isPlaying = false;
+                        updateRadioUI();
+                        showToast("❌ เล่นเพลงไม่ได้: " + error.message);
+                    });
+                }
+                
                 document.getElementById("miniPlayer").classList.remove("hidden");
                 document.getElementById("playerDisc").classList.add("disk-spin");
             } else {
@@ -655,15 +610,7 @@
         }
 
         window.toggleMusicPlayback = async () => {
-            if (!audioUnlocked) {
-                try {
-                    audio.muted = true;
-                    await audio.play();
-                    audio.pause();
-                    audio.muted = false;
-                    audioUnlocked = true;
-                } catch (e) { return; }
-            }
+            musicState.playingIndex = musicState.playingIndex || 0;
             musicState.isPlaying = !musicState.isPlaying;
             applyRadioState();
         };
@@ -717,38 +664,57 @@
 
         window.openModal = (id) => document.getElementById(id).classList.remove('hidden');
         window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+        
         window.leaveRoom = async () => { 
-            if (currentRoom) {
-                // 1. ตรวจสอบจำนวนคนก่อนออก
-                const users = await api('presence', { room: currentRoom, user: currentUsername });
-                const isLastOne = Array.isArray(users) && users.length <= 1;
-                const roomPassword = roomRegistry[currentRoom]?.password || '';
-
-                // 2. แจ้ง Server ว่าออกจากห้อง
-                await api('leaveRoom', {
-                    room: currentRoom,
-                    user: currentUsername
-                });
-
-                // 3. ถ้าเป็นคนสุดท้าย สั่งลบห้อง
-                if (isLastOne) {
-                    await api('deleteRoom', { name: currentRoom, password: roomPassword });
-                    showToast("ห้องถูกลบอัตโนมัติเนื่องจากไม่มีคนอยู่");
-                }
-            }
-
-            pollingIntervals.forEach(clearInterval); 
-            // Music Reset Logic
+            // 1. UI Updates Immediately (Fast Exit)
+            document.getElementById('chatView').classList.add('hidden');
+            document.getElementById('lobbyView').classList.remove('hidden');
+            
+            // Stop Music Immediately
             audio.pause();
             audio.currentTime = 0;
             audio.src = "";
-            audio.load(); // Force stop downloading/buffering
+            audio.load();
             musicState.isPlaying = false;
+            applyRadioState();
             
-            currentRoom = null;
-            document.getElementById('chatView').classList.add('hidden'); 
-            document.getElementById('lobbyView').classList.remove('hidden'); 
-            fetchRooms(); 
+            // Clear Intervals
+            pollingIntervals.forEach(clearInterval);
+
+            const roomToLeave = currentRoom; // Cache room ID
+            const currentUser = currentUsername;
+            // Use CACHED password that we saved upon entry/creation
+            const roomPassword = currentRoomPassword; 
+
+            currentRoom = null; // Clear global state immediately
+            localStorage.removeItem('chat_room_password'); // Clear password on exit
+
+            // 2. Background Operations (Fire and Forget)
+            if (roomToLeave) {
+                try {
+                    // Check presence to decide on delete
+                    const users = await api('presence', { room: roomToLeave, user: currentUser });
+                    const isLastOne = Array.isArray(users) && users.length <= 1;
+
+                    // Leave API
+                    await api('leaveRoom', { room: roomToLeave, user: currentUser });
+
+                    // Auto-delete if last one (Silent)
+                    if (isLastOne) {
+                        await api('deleteRoom', { 
+                            name: roomToLeave, 
+                            room: roomToLeave,
+                            password: roomPassword,
+                            user: currentUser
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error leaving room:", e);
+                }
+            }
+            
+            // Refresh lobby
+            fetchRooms();
         };
         
         window.togglePlayerModal = () => { openModal('musicModal'); renderRadioList(); };
